@@ -1,0 +1,10 @@
+[package]
+name = "handly-backend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+actix-web = "4.10.2"
+sqlx = { version = "0.8.5", features = ["postgres", "runtime-tokio", "macros"] }
+tokio = { version = "1.44.2", features = ["full"] }
+dotenvy = "0.15.7"
