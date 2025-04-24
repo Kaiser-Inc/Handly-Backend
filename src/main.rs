@@ -22,6 +22,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(pool.clone()))
             .service(health_check)
             .configure(routes::users::init)
+            .configure(routes::auth::init)
     })
     .bind(("0.0.0.0", 8080))?
     .run()

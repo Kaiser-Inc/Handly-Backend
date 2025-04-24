@@ -1,5 +1,5 @@
 use crate::models::user::User;
-use crate::services::auth;
+use crate::services::auth::hash_password;
 use actix_web::{web, HttpResponse};
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -16,8 +16,8 @@ pub async fn create_user(
     pool: web::Data<PgPool>,
     payload: web::Json<CreateUser>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let hash = auth::hash_password(&payload.password)
-        .map_err(|_| actix_web::error::ErrorInternalServerError("hash fail"))?;
+    let hashed_password = hash_password(&payload.password)
+        .map_err(|_| actix_web::error::ErrorInternalServerError("Failed to hash password"))?;
 
     let user = sqlx::query_as!(
         User,
@@ -29,7 +29,7 @@ pub async fn create_user(
         Uuid::new_v4(),
         payload.name,
         payload.email,
-        hash
+        hashed_password
     )
     .fetch_one(pool.get_ref())
     .await
