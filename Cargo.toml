@@ -16,3 +16,6 @@ password-hash = "0.5"
 rand_core = "0.6"
 jsonwebtoken = "9"
 time = "0.3"
+
+[dev-dependencies]      # só precisa em testes
+url = "2"
