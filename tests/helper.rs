@@ -1,14 +1,13 @@
-use sqlx::{PgPool, Connection, Executor, PgConnection};
-use std::env;
 use dotenvy::dotenv;
+use sqlx::{Connection, Executor, PgConnection, PgPool};
+use std::env;
 use uuid::Uuid;
 
 // create a temporary database
 pub async fn setup_test_db() -> PgPool {
     dotenv().ok();
-    
-    let base = env::var("DATABASE_URL_TEST")
-        .expect("Set DATABASE_URL_TEST in .env or shell");
+
+    let base = env::var("DATABASE_URL_TEST").expect("Set DATABASE_URL_TEST in .env or shell");
     let db_name = format!("test_{}", Uuid::new_v4());
 
     let mut conn = PgConnection::connect(&base).await.unwrap();
