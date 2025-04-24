@@ -45,3 +45,28 @@ pub fn generate_jwt(user_id: &str) -> Result<String, jsonwebtoken::errors::Error
         &EncodingKey::from_secret(JWT_SECRET),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hash_is_not_plaintext() {
+        let plain = "my-secret";
+        let hash = hash_password(plain).unwrap();
+        assert_ne!(plain, hash);
+    }
+
+    #[test]
+    fn verify_correct_password() {
+        let plain = "123456";
+        let hash = hash_password(plain).unwrap();
+        assert!(verify_password(&hash, plain));
+    }
+
+    #[test]
+    fn verify_wrong_password_fails() {
+        let hash = hash_password("correct").unwrap();
+        assert!(!verify_password(&hash, "wrong"));
+    }
+}
