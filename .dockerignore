@@ -1,0 +1,12 @@
+# Git files
+.git
+.gitignore
+
+# IDE/editor stuff
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+.vscode/
+.idea/
