@@ -5,10 +5,10 @@ use handly_backend::routes::{auth, users};
 use serde_json::json;
 
 #[actix_web::test]
-async fn login_success_returns_token() {
+async fn login_success_returns_tokens() {
     let pool = helper::setup_test_db().await;
 
-    // build app with both routers
+    // build the app
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(pool.clone()))
@@ -17,7 +17,7 @@ async fn login_success_returns_token() {
     )
     .await;
 
-    // create a user first
+    // create user
     let _ = test::call_service(
         &app,
         test::TestRequest::post()
@@ -31,7 +31,7 @@ async fn login_success_returns_token() {
     )
     .await;
 
-    // attempt login
+    // login
     let resp = test::call_service(
         &app,
         test::TestRequest::post()
@@ -46,8 +46,9 @@ async fn login_success_returns_token() {
 
     assert_eq!(resp.status(), 200);
 
-    // token must exist
+    // must return both tokens
     let body = test::read_body(resp).await;
     let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert!(v.get("token").is_some(), "JWT token not found");
+    assert!(v.get("access_token").is_some(), "access token missing");
+    assert!(v.get("refresh_token").is_some(), "refresh token missing");
 }
