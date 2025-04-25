@@ -16,6 +16,10 @@ async fn health_check() -> impl Responder {
 async fn main() -> std::io::Result<()> {
     let cfg = config::Config::from_env();
     let pool = db::init_pool(&cfg.database_url).await;
+    sqlx::migrate!()
+        .run(&pool)
+        .await
+        .expect("migrations failed");
 
     HttpServer::new(move || {
         App::new()
@@ -23,6 +27,7 @@ async fn main() -> std::io::Result<()> {
             .service(health_check)
             .configure(routes::users::init)
             .configure(routes::auth::init)
+            .configure(routes::config)
     })
     .bind(("0.0.0.0", 8080))?
     .run()
