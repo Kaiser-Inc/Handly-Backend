@@ -2,71 +2,93 @@ use argon2::{
     password_hash::{Error as PwError, PasswordHash, PasswordVerifier},
     Argon2,
 };
-use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use password_hash::{PasswordHasher, SaltString};
 use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
+use std::env;
 use time::{Duration, OffsetDateTime};
-
-const JWT_SECRET: &[u8] = b"super-secret-change-me";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    sub: String,
-    exp: i64,
+    pub sub: String,
+    pub exp: i64,
+    pub kind: String, // "access" | "refresh"
 }
 
-pub fn hash_password(plain: &str) -> Result<String, PwError> {
+pub fn hash_password(p: &str) -> Result<String, PwError> {
     let salt = SaltString::generate(&mut OsRng);
     Ok(Argon2::default()
-        .hash_password(plain.as_bytes(), &salt)?
+        .hash_password(p.as_bytes(), &salt)?
         .to_string())
 }
 
-pub fn verify_password(hash: &str, plain: &str) -> bool {
-    if let Ok(parsed) = PasswordHash::new(hash) {
-        Argon2::default()
-            .verify_password(plain.as_bytes(), &parsed)
-            .is_ok()
-    } else {
-        false
-    }
+pub fn verify_password(hash: &str, p: &str) -> bool {
+    PasswordHash::new(hash)
+        .and_then(|ph| Argon2::default().verify_password(p.as_bytes(), &ph))
+        .is_ok()
 }
 
-pub fn generate_jwt(user_id: &str) -> Result<String, jsonwebtoken::errors::Error> {
-    let expiration = (OffsetDateTime::now_utc() + Duration::hours(24)).unix_timestamp();
-    let claims = Claims {
-        sub: user_id.to_owned(),
-        exp: expiration,
-    };
+fn secret() -> String {
+    env::var("JWT_SECRET").expect("JWT_SECRET missing")
+}
+
+fn jwt(claims: &Claims) -> String {
     encode(
         &Header::new(Algorithm::HS256),
-        &claims,
-        &EncodingKey::from_secret(JWT_SECRET),
+        claims,
+        &EncodingKey::from_secret(secret().as_bytes()),
     )
+    .unwrap()
+}
+
+pub fn generate_tokens(user_id: &str) -> (String, String) {
+    let now = OffsetDateTime::now_utc();
+    let access = Claims {
+        sub: user_id.to_owned(),
+        exp: (now + Duration::hours(1)).unix_timestamp(),
+        kind: "access".into(),
+    };
+    let refresh = Claims {
+        sub: user_id.to_owned(),
+        exp: (now + Duration::days(30)).unix_timestamp(),
+        kind: "refresh".into(),
+    };
+    (jwt(&access), jwt(&refresh))
+}
+
+pub fn verify_token(token: &str, expected_kind: &str) -> Option<Claims> {
+    let data = decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret().as_bytes()),
+        &Validation::new(Algorithm::HS256),
+    )
+    .ok()?;
+    if data.claims.kind == expected_kind {
+        Some(data.claims)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::env;
 
     #[test]
-    fn hash_is_not_plaintext() {
-        let plain = "my-secret";
-        let hash = hash_password(plain).unwrap();
-        assert_ne!(plain, hash);
+    fn hash_and_verify() {
+        let h = hash_password("pwd").unwrap();
+        assert!(verify_password(&h, "pwd"));
+        assert!(!verify_password(&h, "bad"));
     }
 
     #[test]
-    fn verify_correct_password() {
-        let plain = "123456";
-        let hash = hash_password(plain).unwrap();
-        assert!(verify_password(&hash, plain));
-    }
-
-    #[test]
-    fn verify_wrong_password_fails() {
-        let hash = hash_password("correct").unwrap();
-        assert!(!verify_password(&hash, "wrong"));
+    fn tokens_roundtrip() {
+        env::set_var("JWT_SECRET", "test-secret");
+        let (acc, ref_tok) = generate_tokens("u1");
+        assert!(verify_token(&acc, "access").is_some());
+        assert!(verify_token(&ref_tok, "refresh").is_some());
+        assert!(verify_token(&acc, "refresh").is_none());
     }
 }

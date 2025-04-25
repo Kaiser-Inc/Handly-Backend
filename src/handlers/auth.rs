@@ -1,5 +1,5 @@
 use crate::models::user::User;
-use crate::services::auth::{generate_jwt, verify_password};
+use crate::services::auth::{generate_tokens, verify_password, verify_token};
 use actix_web::{web, HttpResponse};
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -10,14 +10,19 @@ pub struct LoginRequest {
     pub password: String,
 }
 
+#[derive(Deserialize)]
+pub struct RefreshRequest {
+    refresh_token: String,
+}
+
 pub async fn login_user(
     pool: web::Data<PgPool>,
-    credentials: web::Json<LoginRequest>,
+    creds: web::Json<LoginRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let user = sqlx::query_as!(
         User,
         r#"SELECT id, name, email, password FROM users WHERE email = $1"#,
-        credentials.email
+        creds.email
     )
     .fetch_optional(pool.get_ref())
     .await
@@ -28,12 +33,30 @@ pub async fn login_user(
         None => return Ok(HttpResponse::Unauthorized().finish()),
     };
 
-    if !verify_password(&user.password, &credentials.password) {
+    if !verify_password(&user.password, &creds.password) {
         return Ok(HttpResponse::Unauthorized().finish());
     }
 
-    let token =
-        generate_jwt(&user.id.to_string()).map_err(actix_web::error::ErrorInternalServerError)?;
+    let (access, refresh) = generate_tokens(&user.id.to_string());
 
-    Ok(HttpResponse::Ok().json(serde_json::json!({ "token": token })))
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "access_token":  access,
+        "refresh_token": refresh
+    })))
+}
+
+pub async fn refresh_token(
+    body: web::Json<RefreshRequest>,
+) -> Result<HttpResponse, actix_web::Error> {
+    let claims = match verify_token(&body.refresh_token, "refresh") {
+        Some(c) => c,
+        None => return Ok(HttpResponse::Unauthorized().finish()),
+    };
+
+    let (access, refresh) = generate_tokens(&claims.sub);
+
+    Ok(HttpResponse::Ok().json(serde_json::json!({
+        "access_token":  access,
+        "refresh_token": refresh
+    })))
 }
