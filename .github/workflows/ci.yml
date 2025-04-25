@@ -25,6 +25,7 @@ jobs:
     env:
       DATABASE_URL: postgres://postgres:12345678@localhost:5432/postgres
       DATABASE_URL_TEST: postgres://postgres:12345678@localhost:5432/
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
     steps:
       - uses: actions/checkout@v3
