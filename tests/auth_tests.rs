@@ -6,7 +6,7 @@ use serde_json::json;
 #[actix_web::test]
 async fn customer_login_success_returns_tokens() {
     let pool = helper::setup_test_db().await;
-    
+
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(pool.clone()))
@@ -14,7 +14,7 @@ async fn customer_login_success_returns_tokens() {
             .configure(auth::init),
     )
     .await;
-    
+
     // create customer user
     let _ = test::call_service(
         &app,
@@ -30,7 +30,7 @@ async fn customer_login_success_returns_tokens() {
             .to_request(),
     )
     .await;
-    
+
     // customer login
     let resp = test::call_service(
         &app,
@@ -43,9 +43,9 @@ async fn customer_login_success_returns_tokens() {
             .to_request(),
     )
     .await;
-    
+
     assert_eq!(resp.status(), 200);
-    
+
     // verify tokens
     let body = test::read_body(resp).await;
     let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
@@ -56,7 +56,7 @@ async fn customer_login_success_returns_tokens() {
 #[actix_web::test]
 async fn provider_login_success_returns_tokens() {
     let pool = helper::setup_test_db().await;
-    
+
     let app = test::init_service(
         App::new()
             .app_data(web::Data::new(pool.clone()))
@@ -64,7 +64,7 @@ async fn provider_login_success_returns_tokens() {
             .configure(auth::init),
     )
     .await;
-    
+
     // create provider user
     let _ = test::call_service(
         &app,
@@ -80,7 +80,7 @@ async fn provider_login_success_returns_tokens() {
             .to_request(),
     )
     .await;
-    
+
     // provider login
     let resp = test::call_service(
         &app,
@@ -93,9 +93,9 @@ async fn provider_login_success_returns_tokens() {
             .to_request(),
     )
     .await;
-    
+
     assert_eq!(resp.status(), 200);
-    
+
     // verify tokens
     let body = test::read_body(resp).await;
     let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
