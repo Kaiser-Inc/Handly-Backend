@@ -8,4 +8,6 @@ pub struct User {
     pub name: String,
     pub email: String,
     pub password: String,
+    pub role: String,             // "customer" | "provider"
+    pub cpf_cnpj: Option<String>, // obligatory if role is "provider"
 }
