@@ -10,7 +10,6 @@ async fn protected(req: HttpRequest) -> HttpResponse {
         .and_then(|h| h.to_str().ok())
         .and_then(|s| s.strip_prefix("Bearer "))
         .unwrap_or("");
-
     match verify_token(token, "access") {
         Some(claims) => HttpResponse::Ok().json(json!({ "user_key": claims.sub })),
         None => HttpResponse::Unauthorized().finish(),

@@ -9,12 +9,23 @@ use std::{fs, io::Write};
 use uuid::Uuid;
 
 #[derive(Serialize)]
+pub struct ServiceInfo {
+    pub id: Uuid,
+    pub category: String,
+    pub name: String,
+    pub description: String,
+    pub image: Option<String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
+}
+
+#[derive(Serialize)]
 pub struct Profile {
     pub name: String,
     pub email: String,
     pub role: String,
     pub profile_pic: Option<String>,
-    // TODO: services: Vec<ServiceInfo>,
+    pub services: Vec<ServiceInfo>,
 }
 
 pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpResponse {
@@ -30,22 +41,56 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
     };
     let key = claims.sub;
 
-    let row = match sqlx::query!(
+    let user = match sqlx::query!(
         "SELECT name, email, role, profile_pic FROM users WHERE cpf_cnpj = $1",
         key
     )
     .fetch_one(pool.get_ref())
     .await
     {
-        Ok(r) => r,
+        Ok(u) => u,
+        Err(_) => return HttpResponse::InternalServerError().finish(),
+    };
+
+    let services = match sqlx::query!(
+        r#"
+        SELECT
+          id,
+          category,
+          name,
+          description,
+          image,
+          to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS created_at,
+          to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS updated_at
+        FROM services
+        WHERE provider_key = $1
+        "#,
+        key
+    )
+    .fetch_all(pool.get_ref())
+    .await
+    {
+        Ok(rows) => rows
+            .into_iter()
+            .map(|r| ServiceInfo {
+                id: r.id,
+                category: r.category,
+                name: r.name,
+                description: r.description,
+                image: r.image,
+                created_at: r.created_at,
+                updated_at: r.updated_at,
+            })
+            .collect(),
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
 
     HttpResponse::Ok().json(Profile {
-        name: row.name,
-        email: row.email,
-        role: row.role,
-        profile_pic: row.profile_pic,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profile_pic: user.profile_pic,
+        services,
     })
 }
 
@@ -71,38 +116,30 @@ pub async fn upload_profile_pic(
         return HttpResponse::InternalServerError().finish();
     }
 
-    let mut saved: Option<String> = None;
-
+    let mut saved = None;
     while let Ok(Some(mut field)) = payload.try_next().await {
         if field.name() != "file" {
             continue;
         }
-
         let filename = format!("{}.png", Uuid::new_v4());
         let path = format!("{}/{}", dir, &filename);
         let mut f = match fs::File::create(&path) {
             Ok(file) => file,
             Err(_) => return HttpResponse::InternalServerError().finish(),
         };
-
-        while let Ok(Some(bytes)) = field.try_next().await {
-            if f.write_all(&bytes).is_err() {
+        while let Ok(Some(chunk)) = field.try_next().await {
+            if f.write_all(&chunk).is_err() {
                 return HttpResponse::InternalServerError().finish();
             }
         }
-
-        if sqlx::query!(
+        let _ = sqlx::query!(
             "UPDATE users SET profile_pic = $1 WHERE cpf_cnpj = $2",
             filename,
             key
         )
         .execute(pool.get_ref())
         .await
-        .is_err()
-        {
-            return HttpResponse::InternalServerError().finish();
-        }
-
+        .map_err(|_| HttpResponse::InternalServerError().finish());
         saved = Some(filename);
         break;
     }
