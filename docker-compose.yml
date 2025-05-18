@@ -4,12 +4,14 @@ services:
     container_name: dev_postgres
     restart: always
     environment:
+      JWT_SECRET: ${JWT_SECRET}
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 12345678
       POSTGRES_DB: handly
     ports:
       - "5432:5432"
     volumes:
+      - ./uploads:/app/uploads
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
