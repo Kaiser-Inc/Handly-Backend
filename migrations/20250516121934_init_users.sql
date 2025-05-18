@@ -1,12 +1,11 @@
 -- Add migration script here
 -- up
 CREATE TABLE users (
-    id        UUID PRIMARY KEY,
+    cpf_cnpj  TEXT PRIMARY KEY,
     name      TEXT NOT NULL,
     email     TEXT UNIQUE NOT NULL,
     password  TEXT NOT NULL,
-    role      TEXT NOT NULL DEFAULT 'customer',
-    cpf_cnpj  TEXT UNIQUE
+    role      TEXT NOT NULL  -- 'customer' | 'provider'
 );
 
 -- down
