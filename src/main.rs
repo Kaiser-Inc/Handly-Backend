@@ -26,10 +26,12 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(pool.clone()))
             .service(Files::new("/static", "./uploads").show_files_listing())
+            .service(Files::new("/uploads/services", "./uploads/services").show_files_listing())
             .service(health_check)
             .configure(routes::users::init)
             .configure(routes::auth::init)
-            .configure(routes::config)
+            .configure(routes::protected::init)
+            .configure(routes::services::init)
     })
     .bind(("0.0.0.0", 8080))?
     .run()

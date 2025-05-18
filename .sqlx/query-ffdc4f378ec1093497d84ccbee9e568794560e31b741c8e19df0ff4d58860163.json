@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users SET profile_pic = $1 WHERE cpf_cnpj = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ffdc4f378ec1093497d84ccbee9e568794560e31b741c8e19df0ff4d58860163"
+}
