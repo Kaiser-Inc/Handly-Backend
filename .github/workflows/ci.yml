@@ -1,24 +1,50 @@
-name: CI
+name: Handly-Backend CI
 
 on:
   push:
-    branches: [main]
   pull_request:
-    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 12345678
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+    env:
+      DATABASE_URL: postgres://postgres:12345678@localhost:5432/postgres
+      DATABASE_URL_TEST: postgres://postgres:12345678@localhost:5432/
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
           toolchain: stable
-          profile: minimal 
+          override: true
+
+      - name: Install libpq
+        run: sudo apt-get update && sudo apt-get install -y libpq-dev
+
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --no-default-features --features postgres --version 0.8.5
+
+      - name: Run database migrations
+        run: sqlx migrate run
 
       - name: Build project
         run: cargo build --verbose
@@ -28,3 +54,6 @@ jobs:
 
       - name: Check formatting
         run: cargo fmt -- --check
+
+      - name: Run tests
+        run: cargo test --verbose

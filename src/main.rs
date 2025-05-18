@@ -1,7 +1,11 @@
+mod config;
+mod db;
+mod handlers;
+mod models;
+mod routes;
+mod services;
+
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
-use dotenvy::dotenv;
-use sqlx::postgres::PgPoolOptions;
-use std::env;
 
 #[get("/health")]
 async fn health_check() -> impl Responder {
@@ -10,20 +14,20 @@ async fn health_check() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-
-    let db_pool = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&database_url)
+    let cfg = config::Config::from_env();
+    let pool = db::init_pool(&cfg.database_url).await;
+    sqlx::migrate!()
+        .run(&pool)
         .await
-        .expect("Failed to connect to the database");
+        .expect("migrations failed");
 
     HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(db_pool.clone()))
+            .app_data(web::Data::new(pool.clone()))
             .service(health_check)
+            .configure(routes::users::init)
+            .configure(routes::auth::init)
+            .configure(routes::config)
     })
     .bind(("0.0.0.0", 8080))?
     .run()

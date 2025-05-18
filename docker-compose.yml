@@ -4,6 +4,7 @@ services:
     container_name: dev_postgres
     restart: always
     environment:
+      JWT_SECRET: ${JWT_SECRET}
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 12345678
       POSTGRES_DB: handly
