@@ -66,7 +66,7 @@ pub async fn upload_profile_pic(
     };
     let key = claims.sub;
 
-    let dir = "./uploads/avatars";
+    let dir = "./uploads/profile_pics";
     if fs::create_dir_all(dir).is_err() {
         return HttpResponse::InternalServerError().finish();
     }
