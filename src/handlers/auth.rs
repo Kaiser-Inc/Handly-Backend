@@ -21,11 +21,7 @@ pub async fn login_user(
 ) -> Result<HttpResponse, actix_web::Error> {
     let user = sqlx::query_as!(
         User,
-        r#"
-        SELECT cpf_cnpj, name, email, password, role
-        FROM users
-        WHERE email = $1
-        "#,
+        r#"SELECT id, name, email, password, role, cpf_cnpj FROM users WHERE email = $1"#,
         creds.email
     )
     .fetch_optional(pool.get_ref())
@@ -41,7 +37,7 @@ pub async fn login_user(
         return Ok(HttpResponse::Unauthorized().finish());
     }
 
-    let (access, refresh) = generate_tokens(&user.cpf_cnpj);
+    let (access, refresh) = generate_tokens(&user.id.to_string());
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "access_token":  access,

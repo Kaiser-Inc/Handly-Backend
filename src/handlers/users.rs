@@ -3,6 +3,7 @@ use crate::services::auth::hash_password;
 use actix_web::{web, HttpResponse};
 use serde::Deserialize;
 use sqlx::PgPool;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct CreateUser {
@@ -10,7 +11,7 @@ pub struct CreateUser {
     pub email: String,
     pub password: String,
     pub role: String,             // "customer" | "provider"
-    pub cpf_cnpj: Option<String>, // obligatory
+    pub cpf_cnpj: Option<String>, // obrigatório se role = provider
 }
 
 pub async fn create_user(
@@ -27,18 +28,16 @@ pub async fn create_user(
     let user = sqlx::query_as!(
         User,
         r#"
-        INSERT INTO users (cpf_cnpj, name, email, password, role)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING cpf_cnpj, name, email, password, role
+        INSERT INTO users (id, name, email, password, role, cpf_cnpj)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, name, email, password, role, cpf_cnpj
         "#,
-        payload
-            .cpf_cnpj
-            .as_ref()
-            .ok_or_else(|| actix_web::error::ErrorBadRequest("cpf_cnpj required"))?,
+        Uuid::new_v4(),
         payload.name,
         payload.email,
         hashed,
         payload.role,
+        payload.cpf_cnpj
     )
     .fetch_one(pool.get_ref())
     .await
