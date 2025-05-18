@@ -1,4 +1,4 @@
-use crate::handlers::protected::get_profile;
+use crate::handlers::protected::{get_profile, upload_profile_pic};
 use crate::services::auth::verify_token;
 use actix_web::{http::header::AUTHORIZATION, web, HttpRequest, HttpResponse};
 use serde_json::json;
@@ -10,6 +10,7 @@ async fn protected(req: HttpRequest) -> HttpResponse {
         .and_then(|h| h.to_str().ok())
         .and_then(|s| s.strip_prefix("Bearer "))
         .unwrap_or("");
+
     match verify_token(token, "access") {
         Some(claims) => HttpResponse::Ok().json(json!({ "user_key": claims.sub })),
         None => HttpResponse::Unauthorized().finish(),
@@ -20,6 +21,7 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/protected")
             .route("", web::get().to(protected))
-            .route("/profile", web::get().to(get_profile)),
+            .route("/profile", web::get().to(get_profile))
+            .route("/profilepic", web::post().to(upload_profile_pic)),
     );
 }
