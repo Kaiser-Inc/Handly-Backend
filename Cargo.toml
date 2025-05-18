@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-actix-web = "4.10"
+actix-web = "4.11"
+actix-files = "0.6"
 tokio = { version = "1", features = ["full"] }
 dotenvy = "0.15"
 serde = { version = "1", features = ["derive"] }
@@ -17,5 +18,5 @@ rand_core = "0.6"
 jsonwebtoken = "9"
 time = "0.3"
 
-[dev-dependencies]      # só precisa em testes
+[dev-dependencies]
 url = "2"

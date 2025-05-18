@@ -20,7 +20,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/protected")
             .route("", web::get().to(protected))
-            // aqui registramos GET /protected/profile
             .route("/profile", web::get().to(get_profile)),
     );
 }

@@ -8,8 +8,8 @@ pub struct Profile {
     pub name: String,
     pub email: String,
     pub role: String,
+    pub profile_pic: Option<String>,
     // TODO: services: Vec<ServiceInfo>,
-    // TODO: profile_pic: Option<String>,
 }
 
 pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpResponse {
@@ -23,10 +23,14 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
         Some(c) => c,
         None => return HttpResponse::Unauthorized().finish(),
     };
-    let cpf = claims.sub;
+    let cpf = &claims.sub;
 
     let row = match sqlx::query!(
-        r#"SELECT name, email, role FROM users WHERE cpf_cnpj = $1"#,
+        r#"
+        SELECT name, email, role, profile_pic
+          FROM users
+         WHERE cpf_cnpj = $1
+        "#,
         cpf
     )
     .fetch_one(pool.get_ref())
@@ -40,5 +44,6 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
         name: row.name,
         email: row.email,
         role: row.role,
+        profile_pic: row.profile_pic,
     })
 }

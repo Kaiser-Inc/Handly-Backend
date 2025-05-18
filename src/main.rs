@@ -5,6 +5,7 @@ mod models;
 mod routes;
 mod services;
 
+use actix_files::Files;
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 
 #[get("/health")]
@@ -24,6 +25,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(pool.clone()))
+            .service(Files::new("/static", "./uploads").show_files_listing())
             .service(health_check)
             .configure(routes::users::init)
             .configure(routes::auth::init)
