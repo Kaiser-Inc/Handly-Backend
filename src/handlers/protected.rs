@@ -3,23 +3,26 @@ use actix_multipart::Multipart;
 use actix_web::{web, HttpRequest, HttpResponse};
 use futures_util::stream::StreamExt as _;
 use serde::Serialize;
-use serde_json::json;
 use sqlx::PgPool;
 use std::{fs, io::Write};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ServiceInfo {
+    #[schema(value_type = String, format = "uuid")]
     pub id: Uuid,
     pub category: String,
     pub name: String,
     pub description: String,
     pub image: Option<String>,
+    #[schema(value_type = String)]
     pub created_at: Option<String>,
+    #[schema(value_type = String)]
     pub updated_at: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct Profile {
     pub name: String,
     pub email: String,
@@ -28,6 +31,21 @@ pub struct Profile {
     pub services: Vec<ServiceInfo>,
 }
 
+#[derive(Serialize, ToSchema)]
+pub struct ProfilePicResponse {
+    pub profile_pic: String,
+}
+
+#[utoipa::path(
+    get,
+    path = "/protected/profile",
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 200, description = "Profile info", body = Profile),
+        (status = 401, description = "Unauthorized")
+    ),
+    tag = "protected"
+)]
 pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpResponse {
     let token = req
         .headers()
@@ -40,7 +58,6 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
         None => return HttpResponse::Unauthorized().finish(),
     };
     let key = claims.sub;
-
     let user = match sqlx::query!(
         "SELECT name, email, role, profile_pic FROM users WHERE cpf_cnpj = $1",
         key
@@ -51,7 +68,6 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
         Ok(u) => u,
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
-
     let services = match sqlx::query!(
         r#"
         SELECT
@@ -84,7 +100,6 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
             .collect(),
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
-
     HttpResponse::Ok().json(Profile {
         name: user.name,
         email: user.email,
@@ -94,6 +109,18 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
     })
 }
 
+#[utoipa::path(
+    post,
+    path = "/protected/profilepic",
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 200, description = "Upload success", body = ProfilePicResponse),
+        (status = 400, description = "Bad request"),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "protected"
+)]
 pub async fn upload_profile_pic(
     req: HttpRequest,
     pool: web::Data<PgPool>,
@@ -150,7 +177,7 @@ pub async fn upload_profile_pic(
         break;
     }
     match saved {
-        Some(name) => HttpResponse::Ok().json(json!({ "profile_pic": name })),
+        Some(name) => HttpResponse::Ok().json(ProfilePicResponse { profile_pic: name }),
         None => HttpResponse::BadRequest().body("file missing"),
     }
 }
