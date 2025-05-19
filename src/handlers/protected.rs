@@ -1,7 +1,7 @@
 use crate::services::auth::verify_token;
 use actix_multipart::Multipart;
 use actix_web::{web, HttpRequest, HttpResponse};
-use futures_util::TryStreamExt;
+use futures_util::stream::StreamExt as _;
 use serde::Serialize;
 use serde_json::json;
 use sqlx::PgPool;
@@ -110,40 +110,45 @@ pub async fn upload_profile_pic(
         None => return HttpResponse::Unauthorized().finish(),
     };
     let key = claims.sub;
-
     let dir = "./uploads/profile_pics";
     if fs::create_dir_all(dir).is_err() {
         return HttpResponse::InternalServerError().finish();
     }
-
     let mut saved = None;
-    while let Ok(Some(mut field)) = payload.try_next().await {
-        if field.name() != "file" {
-            continue;
-        }
+    while let Some(item) = payload.next().await {
+        let mut field = match item {
+            Ok(f) if f.content_disposition().get_name() == Some("file") => f,
+            _ => continue,
+        };
         let filename = format!("{}.png", Uuid::new_v4());
         let path = format!("{}/{}", dir, &filename);
         let mut f = match fs::File::create(&path) {
-            Ok(file) => file,
+            Ok(f) => f,
             Err(_) => return HttpResponse::InternalServerError().finish(),
         };
-        while let Ok(Some(chunk)) = field.try_next().await {
-            if f.write_all(&chunk).is_err() {
+        while let Some(chunk) = field.next().await {
+            let data = match chunk {
+                Ok(bytes) => bytes,
+                Err(_) => return HttpResponse::InternalServerError().finish(),
+            };
+            if f.write_all(&data).is_err() {
                 return HttpResponse::InternalServerError().finish();
             }
         }
-        let _ = sqlx::query!(
+        if sqlx::query!(
             "UPDATE users SET profile_pic = $1 WHERE cpf_cnpj = $2",
             filename,
             key
         )
         .execute(pool.get_ref())
         .await
-        .map_err(|_| HttpResponse::InternalServerError().finish());
+        .is_err()
+        {
+            return HttpResponse::InternalServerError().finish();
+        }
         saved = Some(filename);
         break;
     }
-
     match saved {
         Some(name) => HttpResponse::Ok().json(json!({ "profile_pic": name })),
         None => HttpResponse::BadRequest().body("file missing"),

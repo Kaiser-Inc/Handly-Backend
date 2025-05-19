@@ -1,7 +1,7 @@
 use actix_multipart::Multipart;
 use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::{web, HttpRequest, HttpResponse};
-use futures_util::StreamExt;
+use futures_util::stream::StreamExt as _;
 use serde::Deserialize;
 use serde_json::json;
 use sqlx::PgPool;
@@ -165,37 +165,34 @@ pub async fn upload_service_image(
         None => return HttpResponse::Unauthorized().finish(),
     };
     let provider_key = claims.sub;
-
-    let owner = sqlx::query_scalar!(
+    let owner = match sqlx::query_scalar!(
         "SELECT provider_key FROM services WHERE id = $1",
         service_id
     )
     .fetch_one(pool.get_ref())
     .await
-    .map_err(|_| HttpResponse::NotFound().finish())
-    .unwrap();
+    {
+        Ok(o) => o,
+        Err(_) => return HttpResponse::NotFound().finish(),
+    };
     if owner != provider_key {
         return HttpResponse::Forbidden().finish();
     }
-
     let dir = "./uploads/services";
     if fs::create_dir_all(dir).is_err() {
         return HttpResponse::InternalServerError().finish();
     }
-
-    while let Some(field) = payload.next().await {
-        let mut field = match field {
+    while let Some(item) = payload.next().await {
+        let mut field = match item {
             Ok(f) if f.content_disposition().get_name() == Some("file") => f,
             _ => continue,
         };
-
         let filename = format!("{}.png", Uuid::new_v4());
-        let filepath = format!("{}/{}", dir, filename);
+        let filepath = format!("{}/{}", dir, &filename);
         let mut f = match fs::File::create(&filepath) {
-            Ok(file) => file,
+            Ok(f) => f,
             Err(_) => return HttpResponse::InternalServerError().finish(),
         };
-
         while let Some(chunk) = field.next().await {
             let data = match chunk {
                 Ok(bytes) => bytes,
@@ -205,18 +202,18 @@ pub async fn upload_service_image(
                 return HttpResponse::InternalServerError().finish();
             }
         }
-
-        let _ = sqlx::query!(
+        if sqlx::query!(
             "UPDATE services SET image = $1 WHERE id = $2",
             filename,
             service_id
         )
         .execute(pool.get_ref())
         .await
-        .map_err(|_| HttpResponse::InternalServerError().finish());
-
+        .is_err()
+        {
+            return HttpResponse::InternalServerError().finish();
+        }
         return HttpResponse::Ok().json(json!({ "image": filename }));
     }
-
     HttpResponse::BadRequest().body("file missing")
 }
