@@ -1,20 +1,37 @@
 use crate::models::user::User;
 use crate::services::auth::{generate_tokens, verify_password, verify_token};
 use actix_web::{web, HttpResponse};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use utoipa::ToSchema;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct LoginRequest {
     pub email: String,
     pub password: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct RefreshRequest {
-    refresh_token: String,
+    pub refresh_token: String,
 }
 
+#[derive(Serialize, ToSchema)]
+pub struct TokenResponse {
+    pub access_token: String,
+    pub refresh_token: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/auth/login",
+    request_body = LoginRequest,
+    responses(
+        (status = 200, description = "Login success", body = TokenResponse),
+        (status = 401, description = "Unauthorized")
+    ),
+    tag = "auth"
+)]
 pub async fn login_user(
     pool: web::Data<PgPool>,
     creds: web::Json<LoginRequest>,
@@ -43,12 +60,22 @@ pub async fn login_user(
 
     let (access, refresh) = generate_tokens(&user.cpf_cnpj);
 
-    Ok(HttpResponse::Ok().json(serde_json::json!({
-        "access_token":  access,
-        "refresh_token": refresh
-    })))
+    Ok(HttpResponse::Ok().json(TokenResponse {
+        access_token: access,
+        refresh_token: refresh,
+    }))
 }
 
+#[utoipa::path(
+    post,
+    path = "/auth/refresh",
+    request_body = RefreshRequest,
+    responses(
+        (status = 200, description = "Token refreshed", body = TokenResponse),
+        (status = 401, description = "Unauthorized")
+    ),
+    tag = "auth"
+)]
 pub async fn refresh_token(
     body: web::Json<RefreshRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
@@ -59,8 +86,8 @@ pub async fn refresh_token(
 
     let (access, refresh) = generate_tokens(&claims.sub);
 
-    Ok(HttpResponse::Ok().json(serde_json::json!({
-        "access_token":  access,
-        "refresh_token": refresh
-    })))
+    Ok(HttpResponse::Ok().json(TokenResponse {
+        access_token: access,
+        refresh_token: refresh,
+    }))
 }

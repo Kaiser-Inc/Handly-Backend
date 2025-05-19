@@ -1,9 +1,9 @@
 use actix_multipart::Multipart;
 use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
+use actix_web::web::Bytes;
 use actix_web::{web, HttpRequest, HttpResponse};
-use futures_util::stream::StreamExt as _;
-use serde::Deserialize;
-use serde_json::json;
+use futures_util::stream::StreamExt;
+use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::fs;
 use std::io::Write;
@@ -11,8 +11,9 @@ use uuid::Uuid;
 
 use crate::models::service::Service;
 use crate::services::auth::verify_token;
+use utoipa::ToSchema;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct CreateService {
     pub category: String,
     pub name: String,
@@ -20,7 +21,7 @@ pub struct CreateService {
     pub image: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct UpdateService {
     pub category: String,
     pub name: String,
@@ -28,6 +29,23 @@ pub struct UpdateService {
     pub image: Option<String>,
 }
 
+#[derive(Serialize, ToSchema)]
+pub struct ImageResponse {
+    pub image: String,
+}
+
+#[utoipa::path(
+    post,
+    path = "/services",
+    request_body = CreateService,
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 201, description = "Service created", body = Service),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "services"
+)]
 pub async fn create_service(
     req: HttpRequest,
     pool: web::Data<PgPool>,
@@ -66,30 +84,40 @@ pub async fn create_service(
     Ok(HttpResponse::Created().json(svc))
 }
 
+#[utoipa::path(
+    put,
+    path = "/services/{id}",
+    params(("id" = String, Path, description = "Service ID", example = "550e8400-e29b-41d4-a716-446655440000")),
+    request_body = UpdateService,
+    responses(
+        (status = 200, description = "Service updated", body = Service),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "services"
+)]
 pub async fn update_service(
     pool: web::Data<PgPool>,
     path: web::Path<Uuid>,
     payload: web::Json<UpdateService>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let id = path.into_inner();
-    let svc = sqlx::query_as!(
+    let svc: Service = sqlx::query_as!(
         Service,
         r#"
         UPDATE services
-           SET category    = $2,
-               name        = $3,
+           SET category = $2,
+               name = $3,
                description = $4,
-               image       = $5,
-               updated_at  = NOW()
+               image = $5,
+               updated_at = NOW()
          WHERE id = $1
-        RETURNING
-           id, provider_key, category, name, description, image, created_at, updated_at
+        RETURNING id, provider_key, category, name, description, image, created_at, updated_at
         "#,
         id,
         payload.category,
         payload.name,
         payload.description,
-        payload.image,
+        payload.image
     )
     .fetch_one(pool.get_ref())
     .await
@@ -98,13 +126,19 @@ pub async fn update_service(
     Ok(HttpResponse::Ok().json(svc))
 }
 
+#[utoipa::path(
+    get,
+    path = "/services",
+    responses(
+        (status = 200, description = "List services", body = [Service]),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "services"
+)]
 pub async fn list_services(pool: web::Data<PgPool>) -> Result<HttpResponse, actix_web::Error> {
     let services: Vec<Service> = sqlx::query_as!(
         Service,
-        r#"
-        SELECT id, provider_key, category, name, description, image, created_at, updated_at
-          FROM services
-        "#
+        "SELECT id, provider_key, category, name, description, image, created_at, updated_at FROM services"
     )
     .fetch_all(pool.get_ref())
     .await
@@ -113,6 +147,16 @@ pub async fn list_services(pool: web::Data<PgPool>) -> Result<HttpResponse, acti
     Ok(HttpResponse::Ok().json(services))
 }
 
+#[utoipa::path(
+    get,
+    path = "/services/{id}",
+    params(("id" = String, Path, description = "Service ID", example = "550e8400-e29b-41d4-a716-446655440000")),
+    responses(
+        (status = 200, description = "Get service", body = Service),
+        (status = 500, description = "Not found")
+    ),
+    tag = "services"
+)]
 pub async fn get_service(
     pool: web::Data<PgPool>,
     path: web::Path<Uuid>,
@@ -120,12 +164,7 @@ pub async fn get_service(
     let id = path.into_inner();
     let svc: Service = sqlx::query_as!(
         Service,
-        r#"
-        SELECT id, provider_key, category, name, description, image, created_at, updated_at
-          FROM services
-         WHERE id = $1
-        "#,
-        id
+        "SELECT id, provider_key, category, name, description, image, created_at, updated_at FROM services WHERE id=$1", id
     )
     .fetch_one(pool.get_ref())
     .await
@@ -134,12 +173,22 @@ pub async fn get_service(
     Ok(HttpResponse::Ok().json(svc))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/services/{id}",
+    params(("id" = String, Path, description = "Service ID", example = "550e8400-e29b-41d4-a716-446655440000")),
+    responses(
+        (status = 204, description = "Service deleted"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "services"
+)]
 pub async fn delete_service(
     pool: web::Data<PgPool>,
     path: web::Path<Uuid>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let id = path.into_inner();
-    sqlx::query!("DELETE FROM services WHERE id = $1", id)
+    sqlx::query!("DELETE FROM services WHERE id=$1", id)
         .execute(pool.get_ref())
         .await
         .map_err(|_| ErrorInternalServerError("DB error"))?;
@@ -147,6 +196,20 @@ pub async fn delete_service(
     Ok(HttpResponse::NoContent().finish())
 }
 
+#[utoipa::path(
+    post,
+    path = "/services/{id}/image",
+    params(("id" = String, Path, description = "Service ID", example = "550e8400-e29b-41d4-a716-446655440000")),
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 200, description = "Image uploaded", body = ImageResponse),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden"),
+        (status = 404, description = "Not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "services"
+)]
 pub async fn upload_service_image(
     path: web::Path<Uuid>,
     req: HttpRequest,
@@ -165,16 +228,14 @@ pub async fn upload_service_image(
         None => return HttpResponse::Unauthorized().finish(),
     };
     let provider_key = claims.sub;
-    let owner = match sqlx::query_scalar!(
-        "SELECT provider_key FROM services WHERE id = $1",
-        service_id
-    )
-    .fetch_one(pool.get_ref())
-    .await
-    {
-        Ok(o) => o,
-        Err(_) => return HttpResponse::NotFound().finish(),
-    };
+    let owner =
+        match sqlx::query_scalar!("SELECT provider_key FROM services WHERE id=$1", service_id)
+            .fetch_one(pool.get_ref())
+            .await
+        {
+            Ok(o) => o,
+            Err(_) => return HttpResponse::NotFound().finish(),
+        };
     if owner != provider_key {
         return HttpResponse::Forbidden().finish();
     }
@@ -194,16 +255,16 @@ pub async fn upload_service_image(
             Err(_) => return HttpResponse::InternalServerError().finish(),
         };
         while let Some(chunk) = field.next().await {
-            let data = match chunk {
+            let data: Bytes = match chunk {
                 Ok(bytes) => bytes,
-                Err(_) => return HttpResponse::InternalServerError().finish(),
+                Err(_) => Bytes::new(),
             };
             if f.write_all(&data).is_err() {
                 return HttpResponse::InternalServerError().finish();
             }
         }
         if sqlx::query!(
-            "UPDATE services SET image = $1 WHERE id = $2",
+            "UPDATE services SET image=$1 WHERE id=$2",
             filename,
             service_id
         )
@@ -213,7 +274,7 @@ pub async fn upload_service_image(
         {
             return HttpResponse::InternalServerError().finish();
         }
-        return HttpResponse::Ok().json(json!({ "image": filename }));
+        return HttpResponse::Ok().json(ImageResponse { image: filename });
     }
     HttpResponse::BadRequest().body("file missing")
 }

@@ -3,8 +3,9 @@ use crate::services::auth::hash_password;
 use actix_web::{web, HttpResponse};
 use serde::Deserialize;
 use sqlx::PgPool;
+use utoipa::ToSchema;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct CreateUser {
     pub name: String,
     pub email: String,
@@ -13,6 +14,17 @@ pub struct CreateUser {
     pub cpf_cnpj: Option<String>, // obligatory
 }
 
+#[utoipa::path(
+    post,
+    path = "/users",
+    request_body = CreateUser,
+    responses(
+        (status = 201, description = "User created", body = User),
+        (status = 400, description = "Bad request"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "users"
+)]
 pub async fn create_user(
     pool: web::Data<PgPool>,
     payload: web::Json<CreateUser>,
