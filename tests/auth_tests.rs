@@ -1,7 +1,7 @@
 mod helper;
 
 use actix_web::{test, web, App};
-use handly_backend::routes::{users, auth};
+use handly_backend::routes::{auth, users};
 use serde_json::json;
 
 #[actix_web::test]

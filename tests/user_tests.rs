@@ -1,4 +1,3 @@
-// tests/create_user.rs
 mod helper;
 
 use actix_web::{test, web, App};
