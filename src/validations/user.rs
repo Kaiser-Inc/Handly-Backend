@@ -1,6 +1,6 @@
-use actix_web::HttpResponse;
 use crate::handlers::users::CreateUser;
 use crate::validations::ValidationError;
+use actix_web::HttpResponse;
 use regex::Regex;
 use sqlx::PgPool;
 
@@ -8,36 +8,41 @@ use sqlx::PgPool;
 /// mapping to MA0002–MA0004 messages.
 pub async fn validate_user_payload(
     payload: &CreateUser,
-    pool:    &PgPool,
+    pool: &PgPool,
 ) -> Result<(), HttpResponse> {
     let mut errors = Vec::new();
 
     // missing mandatory fields → MA0003
     if payload.name.trim().is_empty() {
         errors.push(ValidationError {
-            field:   "name",
-            code:    "RN0001",
+            field: "name",
+            code: "RN0001",
             message: "Preencha todos os campos obrigatórios.".into(), // MA0003
         });
     }
     if payload.email.trim().is_empty() {
         errors.push(ValidationError {
-            field:   "email",
-            code:    "RN0002",
+            field: "email",
+            code: "RN0002",
             message: "Preencha todos os campos obrigatórios.".into(), // MA0003
         });
     }
     if payload.password.trim().is_empty() {
         errors.push(ValidationError {
-            field:   "password",
-            code:    "RN0003",
+            field: "password",
+            code: "RN0003",
             message: "Preencha todos os campos obrigatórios.".into(), // MA0003
         });
     }
-    if payload.cpf_cnpj.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true) {
+    if payload
+        .cpf_cnpj
+        .as_ref()
+        .map(|s| s.trim().is_empty())
+        .unwrap_or(true)
+    {
         errors.push(ValidationError {
-            field:   "cpf_cnpj",
-            code:    "RN0004",
+            field: "cpf_cnpj",
+            code: "RN0004",
             message: "Preencha todos os campos obrigatórios.".into(), // MA0003
         });
     }
@@ -51,8 +56,8 @@ pub async fn validate_user_payload(
     let name_re = Regex::new(r"^[A-Za-zÀ-ÖØ-öø-ÿ\s]+$").unwrap();
     if !name_re.is_match(&payload.name) {
         errors.push(ValidationError {
-            field:   "name",
-            code:    "RN0001",
+            field: "name",
+            code: "RN0001",
             message: "Um campo não foi preenchido corretamente.".into(), // MA0004
         });
     }
@@ -61,8 +66,8 @@ pub async fn validate_user_payload(
     let email_re = Regex::new(r"^[^@\s]+@[^@\s]+\.(com|br)$").unwrap();
     if !email_re.is_match(&payload.email) {
         errors.push(ValidationError {
-            field:   "email",
-            code:    "RN0002",
+            field: "email",
+            code: "RN0002",
             message: "Um campo não foi preenchido corretamente.".into(), // MA0004
         });
     } else {
@@ -76,8 +81,8 @@ pub async fn validate_user_payload(
         .map_err(|_| HttpResponse::InternalServerError().finish())?;
         if exists_opt.unwrap_or(false) {
             errors.push(ValidationError {
-                field:   "email",
-                code:    "RN0002",
+                field: "email",
+                code: "RN0002",
                 message: "E-mail já está cadastrado no sistema.".into(), // MA0002
             });
         }
@@ -86,8 +91,8 @@ pub async fn validate_user_payload(
     // RN0003: password rules → MA0004
     if payload.password.len() < 8 || payload.password.chars().all(|c| c.is_ascii_digit()) {
         errors.push(ValidationError {
-            field:   "password",
-            code:    "RN0003",
+            field: "password",
+            code: "RN0003",
             message: "Um campo não foi preenchido corretamente.".into(), // MA0004
         });
     }
@@ -97,19 +102,19 @@ pub async fn validate_user_payload(
     let id_re = Regex::new(r"^\d{11}$|^\d{14}$").unwrap();
     if !id_re.is_match(id) {
         errors.push(ValidationError {
-            field:   "cpf_cnpj",
-            code:    "RN0004",
+            field: "cpf_cnpj",
+            code: "RN0004",
             message: "Um campo não foi preenchido corretamente.".into(), // MA0004
         });
     }
-    
+
     // RN0004: CPF/CNPJ must be exactly 11 or 14 digits → MA0004
     let id = payload.cpf_cnpj.as_ref().unwrap();
     let id_re = Regex::new(r"^\d{11}$|^\d{14}$").unwrap();
     if !id_re.is_match(id) {
         errors.push(ValidationError {
-            field:   "cpf_cnpj",
-            code:    "RN0004",
+            field: "cpf_cnpj",
+            code: "RN0004",
             message: "Um campo não foi preenchido corretamente.".into(), // MA0004
         });
     }
