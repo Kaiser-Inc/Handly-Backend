@@ -4,6 +4,7 @@ mod handlers;
 mod models;
 mod routes;
 mod services;
+mod validations;
 
 use actix_files::Files;
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
