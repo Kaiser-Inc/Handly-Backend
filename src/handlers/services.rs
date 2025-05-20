@@ -1,3 +1,4 @@
+use crate::validations::{validate_create_service_payload, validate_update_service_payload};
 use actix_multipart::Multipart;
 use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::web::Bytes;
@@ -51,6 +52,10 @@ pub async fn create_service(
     pool: web::Data<PgPool>,
     payload: web::Json<CreateService>,
 ) -> Result<HttpResponse, actix_web::Error> {
+    if let Err(err) = validate_create_service_payload(&payload).await {
+        return Ok(err);
+    }
+
     let token = req
         .headers()
         .get("Authorization")
@@ -100,6 +105,10 @@ pub async fn update_service(
     path: web::Path<Uuid>,
     payload: web::Json<UpdateService>,
 ) -> Result<HttpResponse, actix_web::Error> {
+    if let Err(err) = validate_update_service_payload(&payload).await {
+        return Ok(err);
+    }
+
     let id = path.into_inner();
     let svc: Service = sqlx::query_as!(
         Service,
