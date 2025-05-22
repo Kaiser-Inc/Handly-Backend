@@ -1,3 +1,6 @@
+use crate::models::user::User;
+use crate::validations::ValidationError;
+use actix_web::HttpResponse;
 use argon2::{
     password_hash::{Error as PwError, PasswordHash, PasswordVerifier},
     Argon2,
@@ -6,6 +9,7 @@ use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, 
 use password_hash::{PasswordHasher, SaltString};
 use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use std::env;
 use time::{Duration, OffsetDateTime};
 
@@ -13,7 +17,7 @@ use time::{Duration, OffsetDateTime};
 pub struct Claims {
     pub sub: String, // cpf_cnpj
     pub exp: i64,
-    pub kind: String, // "access" | "refresh"
+    pub kind: String, // access or refresh
 }
 
 pub fn hash_password(p: &str) -> Result<String, PwError> {
@@ -67,6 +71,48 @@ pub fn verify_token(tok: &str, kind: &str) -> Option<Claims> {
     )
     .ok()?;
     (data.claims.kind == kind).then_some(data.claims)
+}
+
+pub async fn authenticate_user(
+    email: &str,
+    password: &str,
+    pool: &PgPool,
+) -> Result<User, HttpResponse> {
+    let user = sqlx::query_as!(
+        User,
+        r#"
+        SELECT cpf_cnpj, name, email, password, role
+        FROM users
+        WHERE email = $1
+        "#,
+        email
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|_| {
+        HttpResponse::InternalServerError().json(vec![ValidationError {
+            field: "auth",
+            code: "MA0001",
+            message: "Algo deu errado, tente novamente.".into(),
+        }])
+    })?
+    .ok_or_else(|| {
+        HttpResponse::BadRequest().json(vec![ValidationError {
+            field: "email",
+            code: "RN0002",
+            message: "Credenciais inválidas.".into(),
+        }])
+    })?;
+
+    if !verify_password(&user.password, password) {
+        return Err(HttpResponse::BadRequest().json(vec![ValidationError {
+            field: "password",
+            code: "RN0003",
+            message: "Credenciais inválidas.".into(),
+        }]));
+    }
+
+    Ok(user)
 }
 
 #[cfg(test)]

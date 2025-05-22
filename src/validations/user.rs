@@ -4,7 +4,7 @@ use actix_web::HttpResponse;
 use regex::Regex;
 use sqlx::PgPool;
 
-/// Validate CreateUser payload according to RN0001–RN0004 business rules,
+/// Validate CreateUser payload according to [RF01] RN0001–RN0004 business rules,
 /// mapping to MA0002–MA0004 messages.
 pub async fn validate_user_payload(
     payload: &CreateUser,
