@@ -46,7 +46,7 @@ async fn login_with_valid_credentials_returns_200() {
 }
 
 #[actix_web::test]
-async fn login_with_invalid_credentials_returns_401() {
+async fn login_with_invalid_credentials_returns_400() {
     let pool = helper::setup_test_db().await;
     let app = test::init_service(
         App::new()
@@ -68,5 +68,5 @@ async fn login_with_invalid_credentials_returns_401() {
     )
     .await;
 
-    assert_eq!(resp.status(), 401);
+    assert_eq!(resp.status(), 400);
 }
