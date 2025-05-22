@@ -1,6 +1,8 @@
+mod auth;
 mod service;
 mod user;
 
+pub use auth::validate_login_payload;
 pub use service::{validate_create_service_payload, validate_update_service_payload};
 pub use user::validate_user_payload;
 

@@ -1,5 +1,5 @@
-use crate::models::user::User;
-use crate::services::auth::{generate_tokens, verify_password, verify_token};
+use crate::services::auth::{authenticate_user, generate_tokens, verify_token};
+use crate::validations::validate_login_payload;
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -28,7 +28,7 @@ pub struct TokenResponse {
     request_body = LoginRequest,
     responses(
         (status = 200, description = "Login success", body = TokenResponse),
-        (status = 401, description = "Unauthorized")
+        (status = 400, description = "Bad request")
     ),
     tag = "auth"
 )]
@@ -36,27 +36,14 @@ pub async fn login_user(
     pool: web::Data<PgPool>,
     creds: web::Json<LoginRequest>,
 ) -> Result<HttpResponse, actix_web::Error> {
-    let user = sqlx::query_as!(
-        User,
-        r#"
-        SELECT cpf_cnpj, name, email, password, role
-        FROM users
-        WHERE email = $1
-        "#,
-        creds.email
-    )
-    .fetch_optional(pool.get_ref())
-    .await
-    .map_err(actix_web::error::ErrorInternalServerError)?;
-
-    let user = match user {
-        Some(u) => u,
-        None => return Ok(HttpResponse::Unauthorized().finish()),
-    };
-
-    if !verify_password(&user.password, &creds.password) {
-        return Ok(HttpResponse::Unauthorized().finish());
+    if let Err(err) = validate_login_payload(&creds).await {
+        return Ok(err);
     }
+
+    let user = match authenticate_user(&creds.email, &creds.password, pool.get_ref()).await {
+        Ok(u) => u,
+        Err(resp) => return Ok(resp),
+    };
 
     let (access, refresh) = generate_tokens(&user.cpf_cnpj);
 
