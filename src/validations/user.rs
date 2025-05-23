@@ -97,17 +97,6 @@ pub async fn validate_user_payload(
         });
     }
 
-    // RN0004: CPF/CNPJ format → MA0004
-    let id = payload.cpf_cnpj.as_ref().unwrap();
-    let id_re = Regex::new(r"^\d{11}$|^\d{14}$").unwrap();
-    if !id_re.is_match(id) {
-        errors.push(ValidationError {
-            field: "cpf_cnpj",
-            code: "RN0004",
-            message: "Um campo não foi preenchido corretamente.".into(), // MA0004
-        });
-    }
-
     // RN0004: CPF/CNPJ must be exactly 11 or 14 digits → MA0004
     let id = payload.cpf_cnpj.as_ref().unwrap();
     let id_re = Regex::new(r"^\d{11}$|^\d{14}$").unwrap();
