@@ -53,7 +53,7 @@ pub async fn validate_user_payload(
     }
 
     // RN0001: name content → MA0004
-    let name_re = Regex::new(r"^[A-Za-zÀ-ÖØ-öø-ÿ\s]+$").unwrap();
+    let name_re = Regex::new(r"^[A-Za-zÀ-ÖØ-öø-ÿ\s]{2,60}$").unwrap();
     if !name_re.is_match(&payload.name) {
         errors.push(ValidationError {
             field: "name",
