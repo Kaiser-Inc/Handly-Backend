@@ -64,7 +64,7 @@ pub async fn validate_user_payload(
 
     // RN0002: email format → MA0004
     let email_re = Regex::new(r"^[^@\s]+@[^@\s]+\.(com|br)$").unwrap();
-    if !email_re.is_match(&payload.email) {
+    if payload.email.len() > 100 || !email_re.is_match(&payload.email) {
         errors.push(ValidationError {
             field: "email",
             code: "RN0002",
