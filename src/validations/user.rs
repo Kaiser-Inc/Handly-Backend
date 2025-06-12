@@ -104,10 +104,15 @@ pub async fn validate_user_payload(
         });
     }
 
-    // RN0004: CPF/CNPJ must be exactly 11 or 14 digits → MA0004
+    // RN0004: CPF/CNPJ must be valid → MA0004
     let id = payload.cpf_cnpj.as_ref().unwrap();
-    let id_re = Regex::new(r"^\d{11}$|^\d{14}$").unwrap();
-    if !id_re.is_match(id) {
+    let id_digits_re = Regex::new(r"^\d{11}$|^\d{14}$").unwrap();
+    let valid_id = if id_digits_re.is_match(id) {
+        validate_cpf(id) || validate_cnpj(id)
+    } else {
+        false
+    };
+    if !valid_id {
         errors.push(ValidationError {
             field: "cpf_cnpj",
             code: "RN0004",
@@ -120,4 +125,56 @@ pub async fn validate_user_payload(
     } else {
         Ok(())
     }
+}
+
+fn validate_cpf(id: &str) -> bool {
+    if id.len() != 11 || id.chars().all(|c| c == id.chars().next().unwrap()) {
+        return false;
+    }
+    let digits: Vec<u8> = id.chars().filter_map(|c| c.to_digit(10)).map(|d| d as u8).collect();
+    let mut sum: u32 = 0;
+    for i in 0..9 {
+        sum += (digits[i] as u32) * (10 - i as u32);
+    }
+    let mut dv1 = (sum * 10) % 11;
+    if dv1 == 10 {
+        dv1 = 0;
+    }
+    if dv1 as u8 != digits[9] {
+        return false;
+    }
+    sum = 0;
+    for i in 0..10 {
+        sum += (digits[i] as u32) * (11 - i as u32);
+    }
+    let mut dv2 = (sum * 10) % 11;
+    if dv2 == 10 {
+        dv2 = 0;
+    }
+    dv2 as u8 == digits[10]
+}
+
+fn validate_cnpj(id: &str) -> bool {
+    if id.len() != 14 || id.chars().all(|c| c == id.chars().next().unwrap()) {
+        return false;
+    }
+    let digits: Vec<u8> = id.chars().filter_map(|c| c.to_digit(10)).map(|d| d as u8).collect();
+    let weights1 = [5u32, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    let mut sum: u32 = 0;
+    for i in 0..12 {
+        sum += (digits[i] as u32) * weights1[i];
+    }
+    let mut dv1 = sum % 11;
+    dv1 = if dv1 < 2 { 0 } else { 11 - dv1 };
+    if dv1 as u8 != digits[12] {
+        return false;
+    }
+    let weights2 = [6u32, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    sum = 0;
+    for i in 0..13 {
+        sum += (digits[i] as u32) * weights2[i];
+    }
+    let mut dv2 = sum % 11;
+    dv2 = if dv2 < 2 { 0 } else { 11 - dv2 };
+    dv2 as u8 == digits[13]
 }
