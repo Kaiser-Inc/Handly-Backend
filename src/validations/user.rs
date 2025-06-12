@@ -131,23 +131,33 @@ fn validate_cpf(id: &str) -> bool {
     if id.len() != 11 || id.chars().all(|c| c == id.chars().next().unwrap()) {
         return false;
     }
-    let digits: Vec<u8> = id.chars().filter_map(|c| c.to_digit(10)).map(|d| d as u8).collect();
-    let mut sum: u32 = 0;
-    for i in 0..9 {
-        sum += (digits[i] as u32) * (10 - i as u32);
-    }
-    let mut dv1 = (sum * 10) % 11;
+    let digits: Vec<u8> = id
+        .chars()
+        .filter_map(|c| c.to_digit(10))
+        .map(|d| d as u8)
+        .collect();
+
+    let sum1: u32 = digits
+        .iter()
+        .take(9)
+        .enumerate()
+        .map(|(i, &d)| (d as u32) * (10 - i as u32))
+        .sum();
+    let mut dv1 = (sum1 * 10) % 11;
     if dv1 == 10 {
         dv1 = 0;
     }
     if dv1 as u8 != digits[9] {
         return false;
     }
-    sum = 0;
-    for i in 0..10 {
-        sum += (digits[i] as u32) * (11 - i as u32);
-    }
-    let mut dv2 = (sum * 10) % 11;
+
+    let sum2: u32 = digits
+        .iter()
+        .take(10)
+        .enumerate()
+        .map(|(i, &d)| (d as u32) * (11 - i as u32))
+        .sum();
+    let mut dv2 = (sum2 * 10) % 11;
     if dv2 == 10 {
         dv2 = 0;
     }
@@ -158,23 +168,33 @@ fn validate_cnpj(id: &str) -> bool {
     if id.len() != 14 || id.chars().all(|c| c == id.chars().next().unwrap()) {
         return false;
     }
-    let digits: Vec<u8> = id.chars().filter_map(|c| c.to_digit(10)).map(|d| d as u8).collect();
+    let digits: Vec<u8> = id
+        .chars()
+        .filter_map(|c| c.to_digit(10))
+        .map(|d| d as u8)
+        .collect();
+
     let weights1 = [5u32, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-    let mut sum: u32 = 0;
-    for i in 0..12 {
-        sum += (digits[i] as u32) * weights1[i];
-    }
-    let mut dv1 = sum % 11;
+    let sum1: u32 = digits
+        .iter()
+        .take(12)
+        .zip(weights1.iter())
+        .map(|(&d, &w)| (d as u32) * w)
+        .sum();
+    let mut dv1 = sum1 % 11;
     dv1 = if dv1 < 2 { 0 } else { 11 - dv1 };
     if dv1 as u8 != digits[12] {
         return false;
     }
+
     let weights2 = [6u32, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
-    sum = 0;
-    for i in 0..13 {
-        sum += (digits[i] as u32) * weights2[i];
-    }
-    let mut dv2 = sum % 11;
+    let sum2: u32 = digits
+        .iter()
+        .take(13)
+        .zip(weights2.iter())
+        .map(|(&d, &w)| (d as u32) * w)
+        .sum();
+    let mut dv2 = sum2 % 11;
     dv2 = if dv2 < 2 { 0 } else { 11 - dv2 };
     dv2 as u8 == digits[13]
 }
