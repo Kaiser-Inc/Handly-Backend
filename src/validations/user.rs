@@ -91,11 +91,12 @@ pub async fn validate_user_payload(
     // RN0003: password rules → MA0004
     let pwd = &payload.password;
     let is_too_short = pwd.len() < 8;
+    let is_too_long = pwd.len() > 20;
     let is_all_digits = pwd.chars().all(|c| c.is_ascii_digit());
     let is_all_letters = pwd.chars().all(|c| c.is_alphabetic());
     let is_all_special = pwd.chars().all(|c| !c.is_alphanumeric());
 
-    if is_too_short || is_all_digits || is_all_letters || is_all_special {
+    if is_too_short || is_too_long || is_all_digits || is_all_letters || is_all_special {
         errors.push(ValidationError {
             field: "password",
             code: "RN0003",

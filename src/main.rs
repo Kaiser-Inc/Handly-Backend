@@ -49,7 +49,6 @@ use crate::handlers::users::__path_create_user;
             crate::models::service::Service,
             crate::handlers::services::CreateService,
             crate::handlers::services::UpdateService,
-            crate::handlers::protected::ServiceInfo,
             crate::handlers::protected::Profile,
             crate::handlers::protected::ProfilePicResponse,
             crate::handlers::services::ImageResponse

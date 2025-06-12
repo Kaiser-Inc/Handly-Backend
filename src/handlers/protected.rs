@@ -9,26 +9,11 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 #[derive(Serialize, ToSchema)]
-pub struct ServiceInfo {
-    #[schema(value_type = String, format = "uuid")]
-    pub id: Uuid,
-    pub category: String,
-    pub name: String,
-    pub description: String,
-    pub image: Option<String>,
-    #[schema(value_type = String)]
-    pub created_at: Option<String>,
-    #[schema(value_type = String)]
-    pub updated_at: Option<String>,
-}
-
-#[derive(Serialize, ToSchema)]
 pub struct Profile {
     pub name: String,
     pub email: String,
     pub role: String,
     pub profile_pic: Option<String>,
-    pub services: Vec<ServiceInfo>,
 }
 
 #[derive(Serialize, ToSchema)]
@@ -68,44 +53,11 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
         Ok(u) => u,
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
-    let services = match sqlx::query!(
-        r#"
-        SELECT
-          id,
-          category,
-          name,
-          description,
-          image,
-          to_char(created_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS created_at,
-          to_char(updated_at, 'YYYY-MM-DD"T"HH24:MI:SSZ') AS updated_at
-        FROM services
-        WHERE provider_key = $1
-        "#,
-        key
-    )
-    .fetch_all(pool.get_ref())
-    .await
-    {
-        Ok(rows) => rows
-            .into_iter()
-            .map(|r| ServiceInfo {
-                id: r.id,
-                category: r.category,
-                name: r.name,
-                description: r.description,
-                image: r.image,
-                created_at: r.created_at,
-                updated_at: r.updated_at,
-            })
-            .collect(),
-        Err(_) => return HttpResponse::InternalServerError().finish(),
-    };
     HttpResponse::Ok().json(Profile {
         name: user.name,
         email: user.email,
         role: user.role,
         profile_pic: user.profile_pic,
-        services,
     })
 }
 
