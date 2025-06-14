@@ -10,7 +10,7 @@ pub struct Service {
     #[schema(value_type = String, format = "uuid", example = "550e8400-e29b-41d4-a716-446655440000")]
     pub id: Uuid,
     pub provider_key: String,
-    pub category: String,
+    pub categories: Vec<String>,
     pub name: String,
     pub description: String,
     pub image: Option<String>,

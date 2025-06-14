@@ -51,24 +51,66 @@ const CATEGORIES: &[&str] = &[
     "mecânico",
 ];
 
+/// Validate CreateService payload according to [RF05] RN0001–RN0008 business rules,
+/// mapping to MA0003 (campos obrigatórios) and MA0004 (preenchimento incorreto).
 pub async fn validate_create_service_payload(payload: &CreateService) -> Result<(), HttpResponse> {
     let mut errors = Vec::new();
 
-    // RN0006: description must be at most 300 characters
-    if payload.description.chars().count() > 300 {
+    // missing mandatory fields → MA0003
+    if payload.name.trim().is_empty() {
+        errors.push(ValidationError {
+            field: "name",
+            code: "RN0001",
+            message: "Preencha todos os campos obrigatórios.".into(), // MA0003
+        });
+    }
+    if payload.description.trim().is_empty() {
         errors.push(ValidationError {
             field: "description",
+            code: "RN0005",
+            message: "Preencha todos os campos obrigatórios.".into(), // MA0003
+        });
+    }
+    if payload.categories.is_empty() {
+        errors.push(ValidationError {
+            field: "categories",
             code: "RN0006",
-            message: "Description must be at most 300 characters".into(),
+            message: "Preencha todos os campos obrigatórios.".into(), // MA0003
         });
     }
 
-    // RN0007: category must be one of the allowed options
-    if !CATEGORIES.contains(&payload.category.as_str()) {
+    // abort early if any missing
+    if !errors.is_empty() {
+        return Err(HttpResponse::BadRequest().json(errors));
+    }
+
+    // RN0007: description length → MA0004
+    if payload.description.chars().count() > 300 {
         errors.push(ValidationError {
-            field: "category",
+            field: "description",
             code: "RN0007",
-            message: format!("Category must be one of: {}", CATEGORIES.join(", ")),
+            message: "Um campo não foi preenchido corretamente.".into(), // MA0004
+        });
+    }
+
+    // RN0008: category values → MA0004
+    for cat in &payload.categories {
+        if !CATEGORIES.contains(&cat.as_str()) {
+            errors.push(ValidationError {
+                field: "categories",
+                code: "RN0008",
+                message: "Um campo não foi preenchido corretamente.".into(), // MA0004
+            });
+            break;
+        }
+    }
+
+    // RN0009: at most 5 categories → MA0004
+    if payload.categories.len() > 5 {
+        errors.push(ValidationError {
+            field: "categories",
+            code: "RN0009",
+            message: "Um campo não foi preenchido corretamente.".into(), // MA0004
         });
     }
 
@@ -78,24 +120,66 @@ pub async fn validate_create_service_payload(payload: &CreateService) -> Result<
     Ok(())
 }
 
+/// Validate UpdateService payload according to [RF05] RN0001–RN0008 business rules,
+/// mapping to MA0003 (campos obrigatórios) and MA0004 (preenchimento incorreto).
 pub async fn validate_update_service_payload(payload: &UpdateService) -> Result<(), HttpResponse> {
     let mut errors = Vec::new();
 
-    // RN0006: description must be at most 300 characters
-    if payload.description.chars().count() > 300 {
+    // missing mandatory fields → MA0003
+    if payload.name.trim().is_empty() {
+        errors.push(ValidationError {
+            field: "name",
+            code: "RN0001",
+            message: "Preencha todos os campos obrigatórios.".into(), // MA0003
+        });
+    }
+    if payload.description.trim().is_empty() {
         errors.push(ValidationError {
             field: "description",
+            code: "RN0005",
+            message: "Preencha todos os campos obrigatórios.".into(), // MA0003
+        });
+    }
+    if payload.categories.is_empty() {
+        errors.push(ValidationError {
+            field: "categories",
             code: "RN0006",
-            message: "Description must be at most 300 characters".into(),
+            message: "Preencha todos os campos obrigatórios.".into(), // MA0003
         });
     }
 
-    // RN0007: category must be one of the allowed options
-    if !CATEGORIES.contains(&payload.category.as_str()) {
+    // abort early if any missing
+    if !errors.is_empty() {
+        return Err(HttpResponse::BadRequest().json(errors));
+    }
+
+    // RN0007: description length → MA0004
+    if payload.description.chars().count() > 300 {
         errors.push(ValidationError {
-            field: "category",
+            field: "description",
             code: "RN0007",
-            message: format!("Category must be one of: {}", CATEGORIES.join(", ")),
+            message: "Um campo não foi preenchido corretamente.".into(), // MA0004
+        });
+    }
+
+    // RN0008: category values → MA0004
+    for cat in &payload.categories {
+        if !CATEGORIES.contains(&cat.as_str()) {
+            errors.push(ValidationError {
+                field: "categories",
+                code: "RN0008",
+                message: "Um campo não foi preenchido corretamente.".into(), // MA0004
+            });
+            break;
+        }
+    }
+
+    // RN0009: at most 5 categories → MA0004
+    if payload.categories.len() > 5 {
+        errors.push(ValidationError {
+            field: "categories",
+            code: "RN0009",
+            message: "Um campo não foi preenchido corretamente.".into(), // MA0004
         });
     }
 

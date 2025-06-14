@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n          id,\n          category,\n          name,\n          description,\n          image,\n          to_char(created_at, 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS created_at,\n          to_char(updated_at, 'YYYY-MM-DD\"T\"HH24:MI:SSZ') AS updated_at\n        FROM services\n        WHERE provider_key = $1\n        ",
+  "query": "SELECT id, provider_key, categories, name, description, image, created_at, updated_at FROM services WHERE id=$1",
   "describe": {
     "columns": [
       {
@@ -10,38 +10,43 @@
       },
       {
         "ordinal": 1,
-        "name": "category",
+        "name": "provider_key",
         "type_info": "Text"
       },
       {
         "ordinal": 2,
+        "name": "categories",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 3,
         "name": "name",
         "type_info": "Text"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "description",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "image",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "created_at",
-        "type_info": "Text"
+        "type_info": "Timestamptz"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "updated_at",
-        "type_info": "Text"
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -49,10 +54,11 @@
       false,
       false,
       false,
+      false,
       true,
-      null,
-      null
+      false,
+      false
     ]
   },
-  "hash": "66705f2c8a78a5b484bcc6f1c369a241d90ab101092aa9d592e69446383a5f45"
+  "hash": "cd02087c446f8a801d39c010793cf68eed930695291247757b23c0ec871c2b40"
 }
