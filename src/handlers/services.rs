@@ -16,7 +16,7 @@ use utoipa::ToSchema;
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateService {
-    pub category: String,
+    pub categories: Vec<String>,
     pub name: String,
     pub description: String,
     pub image: Option<String>,
@@ -24,7 +24,7 @@ pub struct CreateService {
 
 #[derive(Deserialize, ToSchema)]
 pub struct UpdateService {
-    pub category: String,
+    pub categories: Vec<String>,
     pub name: String,
     pub description: String,
     pub image: Option<String>,
@@ -69,15 +69,15 @@ pub async fn create_service(
         Service,
         r#"
         INSERT INTO services
-          (id, provider_key, category, name, description, image)
+          (id, provider_key, categories, name, description, image)
         VALUES
           ($1, $2, $3, $4, $5, $6)
         RETURNING
-          id, provider_key, category, name, description, image, created_at, updated_at
+          id, provider_key, categories, name, description, image, created_at, updated_at
         "#,
         Uuid::new_v4(),
         provider_key,
-        payload.category,
+        &payload.categories,
         payload.name,
         payload.description,
         payload.image
@@ -114,16 +114,16 @@ pub async fn update_service(
         Service,
         r#"
         UPDATE services
-           SET category = $2,
+           SET categories = $2,
                name = $3,
                description = $4,
                image = $5,
                updated_at = NOW()
          WHERE id = $1
-        RETURNING id, provider_key, category, name, description, image, created_at, updated_at
+        RETURNING id, provider_key, categories, name, description, image, created_at, updated_at
         "#,
         id,
-        payload.category,
+        &payload.categories,
         payload.name,
         payload.description,
         payload.image
@@ -147,7 +147,7 @@ pub async fn update_service(
 pub async fn list_services(pool: web::Data<PgPool>) -> Result<HttpResponse, actix_web::Error> {
     let services: Vec<Service> = sqlx::query_as!(
         Service,
-        "SELECT id, provider_key, category, name, description, image, created_at, updated_at FROM services"
+        "SELECT id, provider_key, categories, name, description, image, created_at, updated_at FROM services"
     )
     .fetch_all(pool.get_ref())
     .await
@@ -173,7 +173,8 @@ pub async fn get_service(
     let id = path.into_inner();
     let svc: Service = sqlx::query_as!(
         Service,
-        "SELECT id, provider_key, category, name, description, image, created_at, updated_at FROM services WHERE id=$1", id
+        "SELECT id, provider_key, categories, name, description, image, created_at, updated_at FROM services WHERE id=$1",
+        id
     )
     .fetch_one(pool.get_ref())
     .await
