@@ -62,7 +62,7 @@ mod tests {
     use actix_web::{http::StatusCode, web};
     use sqlx::PgPool;
 
-    // Helper pool that won’t connect until used
+    // lazy pool, no actual connection until used
     fn init_pool() -> PgPool {
         PgPool::connect_lazy("postgres://user:pass@localhost/fake_db").unwrap()
     }

@@ -78,3 +78,66 @@ pub async fn refresh_token(
         refresh_token: refresh,
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::{web, http::StatusCode};
+    use sqlx::PgPool;
+    use std::env;
+
+    // ensure those env vars exist so generate_tokens/verify_token won't panic
+    fn init_env() {
+        env::set_var("JWT_SECRET", "dummy");
+        env::set_var("JWT_REFRESH_SECRET", "dummy");
+    }
+
+    // lazy pool, no actual connection until used
+    fn init_pool() -> PgPool {
+        PgPool::connect_lazy("postgres://user:pass@localhost/test_db").unwrap()
+    }
+
+    #[actix_web::test]
+    async fn login_missing_fields_returns_400() {
+        init_env();
+        let pool = web::Data::new(init_pool());
+        let creds = web::Json(LoginRequest {
+            email: "".into(),
+            password: "".into(),
+        });
+        let resp = login_user(pool, creds).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[actix_web::test]
+    async fn login_invalid_credentials_returns_401() {
+        init_env();
+        let pool = web::Data::new(init_pool());
+        let creds = web::Json(LoginRequest {
+            email: "no@user.com".into(),
+            password: "wrong".into(),
+        });
+        let resp = login_user(pool, creds).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[actix_web::test]
+    async fn refresh_invalid_token_returns_401() {
+        init_env();
+        let body = web::Json(RefreshRequest {
+            refresh_token: "bad.token.here".into(),
+        });
+        let resp = refresh_token(body).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[actix_web::test]
+    async fn refresh_valid_token_returns_200() {
+        init_env();
+        // generate a valid refresh
+        let (_access, refresh) = generate_tokens("test-user");
+        let body = web::Json(RefreshRequest { refresh_token: refresh });
+        let resp = refresh_token(body).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+    }
+}
