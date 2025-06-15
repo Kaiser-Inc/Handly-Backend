@@ -2,7 +2,8 @@ use crate::services::auth::verify_token;
 use actix_multipart::Multipart;
 use actix_web::{web, HttpRequest, HttpResponse};
 use futures_util::stream::StreamExt as _;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sqlx::PgPool;
 use std::{fs, io::Write};
 use utoipa::ToSchema;
@@ -19,6 +20,11 @@ pub struct Profile {
 #[derive(Serialize, ToSchema)]
 pub struct ProfilePicResponse {
     pub profile_pic: String,
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct UpdateProfile {
+    pub name: String,
 }
 
 #[utoipa::path(
@@ -58,6 +64,66 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
         email: user.email,
         role: user.role,
         profile_pic: user.profile_pic,
+    })
+}
+
+#[utoipa::path(
+    put,
+    path = "/protected/profile",
+    security(("bearerAuth" = [])),
+    request_body = UpdateProfile,
+    responses(
+        (status = 200, description = "Profile updated", body = Profile),
+        (status = 400, description = "Bad request"),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "protected"
+)]
+pub async fn update_profile(
+    req: HttpRequest,
+    pool: web::Data<PgPool>,
+    payload: web::Json<UpdateProfile>,
+) -> HttpResponse {
+    let token = req
+        .headers()
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))
+        .unwrap_or("");
+    let claims = match verify_token(token, "access") {
+        Some(c) => c,
+        None => return HttpResponse::Unauthorized().finish(),
+    };
+    let key = claims.sub;
+    if payload.name.trim().is_empty() {
+        return HttpResponse::BadRequest().json(json!([{
+            "field": "name",
+            "code": "RN0001",
+            "message": "Preencha todos os campos obrigatórios."
+        }]));
+    }
+    let row = match sqlx::query!(
+        "UPDATE users SET name = $1 WHERE cpf_cnpj = $2 RETURNING name, email, role, profile_pic",
+        payload.name,
+        key
+    )
+    .fetch_one(pool.get_ref())
+    .await
+    {
+        Ok(r) => r,
+        Err(_) => {
+            return HttpResponse::InternalServerError().json(json!({
+                "code": "MA0001",
+                "message": "Algo deu errado, tente novamente."
+            }))
+        }
+    };
+    HttpResponse::Ok().json(Profile {
+        name: row.name,
+        email: row.email,
+        role: row.role,
+        profile_pic: row.profile_pic,
     })
 }
 
