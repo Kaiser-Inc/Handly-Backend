@@ -1,3 +1,4 @@
+use crate::models::service::Service;
 use crate::services::auth::verify_token;
 use actix_multipart::Multipart;
 use actix_web::{web, HttpRequest, HttpResponse};
@@ -198,4 +199,43 @@ pub async fn upload_profile_pic(
         Some(name) => HttpResponse::Ok().json(ProfilePicResponse { profile_pic: name }),
         None => HttpResponse::BadRequest().body("file missing"),
     }
+}
+
+#[utoipa::path(
+    get,
+    path = "/protected/services",
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 200, description = "List services", body = [Service]),
+        (status = 401, description = "Unauthorized"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "protected"
+)]
+pub async fn get_user_services(req: HttpRequest, pool: web::Data<PgPool>) -> HttpResponse {
+    let token = req
+        .headers()
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))
+        .unwrap_or("");
+    let claims = match verify_token(token, "access") {
+        Some(c) => c,
+        None => return HttpResponse::Unauthorized().finish(),
+    };
+    let provider_key = claims.sub;
+    let services = match sqlx::query_as!(
+        Service,
+        "SELECT id, provider_key, categories, name, description, image, created_at, updated_at \
+         FROM services \
+         WHERE provider_key = $1",
+        provider_key
+    )
+    .fetch_all(pool.get_ref())
+    .await
+    {
+        Ok(list) => list,
+        Err(_) => return HttpResponse::InternalServerError().finish(),
+    };
+    HttpResponse::Ok().json(services)
 }
