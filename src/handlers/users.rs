@@ -54,3 +54,88 @@ pub async fn create_user(
         message: "Cadastro feito com sucesso.".into(),
     }))
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::handlers::users::CreateUser;
+    use crate::validations::validate_user_payload;
+    use actix_web::{http::StatusCode, web};
+    use sqlx::PgPool;
+
+    // Helper pool that won’t connect until used
+    fn init_pool() -> PgPool {
+        PgPool::connect_lazy("postgres://user:pass@localhost/fake_db").unwrap()
+    }
+
+    #[actix_web::test]
+    async fn rejects_missing_mandatory_fields() {
+        let pool = init_pool();
+        let payload = CreateUser {
+            name: "".into(),
+            email: "".into(),
+            password: "".into(),
+            role: "".into(),
+            cpf_cnpj: None,
+        };
+        let result = validate_user_payload(&web::Json(payload), &pool).await;
+        assert!(result.is_err());
+        let resp = result.unwrap_err();
+        assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    }
+
+    #[actix_web::test]
+    async fn rejects_invalid_name_format() {
+        let pool = init_pool();
+        let payload = CreateUser {
+            name: "X".into(), // too short or invalid chars
+            email: "user@example.com".into(),
+            password: "Password1!".into(),
+            role: "user".into(),
+            cpf_cnpj: Some("12345678901".into()),
+        };
+        let result = validate_user_payload(&web::Json(payload), &pool).await;
+        assert!(result.is_err());
+    }
+
+    #[actix_web::test]
+    async fn rejects_invalid_email_format() {
+        let pool = init_pool();
+        let payload = CreateUser {
+            name: "Valid Name".into(),
+            email: "invalid-email".into(), // missing @domain
+            password: "Password1!".into(),
+            role: "user".into(),
+            cpf_cnpj: Some("12345678901".into()),
+        };
+        let result = validate_user_payload(&web::Json(payload), &pool).await;
+        assert!(result.is_err());
+    }
+
+    #[actix_web::test]
+    async fn rejects_short_password() {
+        let pool = init_pool();
+        let payload = CreateUser {
+            name: "Valid Name".into(),
+            email: "user@example.com".into(),
+            password: "short".into(), // too short
+            role: "user".into(),
+            cpf_cnpj: Some("12345678901".into()),
+        };
+        let result = validate_user_payload(&web::Json(payload), &pool).await;
+        assert!(result.is_err());
+    }
+
+    #[actix_web::test]
+    async fn rejects_invalid_cpf_cnpj() {
+        let pool = init_pool();
+        let payload = CreateUser {
+            name: "Valid Name".into(),
+            email: "user@example.com".into(),
+            password: "Password1!".into(),
+            role: "user".into(),
+            cpf_cnpj: Some("00000000000".into()), // invalid repetition
+        };
+        let result = validate_user_payload(&web::Json(payload), &pool).await;
+        assert!(result.is_err());
+    }
+}
