@@ -82,7 +82,7 @@ pub async fn refresh_token(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::{web, http::StatusCode};
+    use actix_web::{http::StatusCode, web};
     use sqlx::PgPool;
     use std::env;
 
@@ -136,7 +136,9 @@ mod tests {
         init_env();
         // generate a valid refresh
         let (_access, refresh) = generate_tokens("test-user");
-        let body = web::Json(RefreshRequest { refresh_token: refresh });
+        let body = web::Json(RefreshRequest {
+            refresh_token: refresh,
+        });
         let resp = refresh_token(body).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
     }
