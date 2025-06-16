@@ -20,11 +20,11 @@ async fn login_with_valid_credentials_returns_200() {
         test::TestRequest::post()
             .uri("/users")
             .set_json(json!({
-                "name": "Bob",
-                "email": "bob@example.com",
-                "password": "Password1",
+                "name": "Alice",
+                "email": "alice@example.com",
+                "password": "Password123",
                 "role": "customer",
-                "cpf_cnpj": "12345678900"
+                "cpf_cnpj": "12345678909"
             }))
             .to_request(),
     )
@@ -35,8 +35,8 @@ async fn login_with_valid_credentials_returns_200() {
         test::TestRequest::post()
             .uri("/auth/login")
             .set_json(json!({
-                "email": "bob@example.com",
-                "password": "Password1"
+                "email": "alice@example.com",
+                "password": "Password123"
             }))
             .to_request(),
     )

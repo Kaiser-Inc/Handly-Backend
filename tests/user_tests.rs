@@ -21,9 +21,9 @@ async fn create_customer_user_returns_201() {
             .set_json(json!({
                 "name": "Alice",
                 "email": "alice@example.com",
-                "password": "Password1",
+                "password": "Password123",
                 "role": "customer",
-                "cpf_cnpj": "12345678900"
+                "cpf_cnpj": "12345678909"
             }))
             .to_request(),
     )
@@ -51,7 +51,7 @@ async fn create_provider_user_returns_201() {
                 "email": "contact@xyz.com",
                 "password": "Password1",
                 "role": "provider",
-                "cpf_cnpj": "12345678000199"
+                "cpf_cnpj": "12345678909"
             }))
             .to_request(),
     )
