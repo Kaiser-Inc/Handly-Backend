@@ -14,6 +14,7 @@ use utoipa_swagger_ui::SwaggerUi;
 // Import generated Utoipa path definitions
 use crate::handlers::auth::__path_login_user;
 use crate::handlers::auth::__path_refresh_token;
+use crate::handlers::feed::__path_get_feed;
 use crate::handlers::protected::__path_get_profile;
 use crate::handlers::protected::__path_upload_profile_pic;
 use crate::handlers::services::__path_create_service;
@@ -38,7 +39,8 @@ use crate::handlers::users::__path_create_user;
         list_services,
         get_service,
         delete_service,
-        upload_service_image
+        upload_service_image,
+        get_feed
     ),
     components(
         schemas(
@@ -51,7 +53,8 @@ use crate::handlers::users::__path_create_user;
             crate::handlers::services::UpdateService,
             crate::handlers::protected::Profile,
             crate::handlers::protected::ProfilePicResponse,
-            crate::handlers::services::ImageResponse
+            crate::handlers::services::ImageResponse,
+            crate::handlers::feed::FeedItem
         )
     ),
     tags(
@@ -96,6 +99,7 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::auth::init)
             .configure(routes::protected::init)
             .configure(routes::services::init)
+            .configure(routes::feed::init)
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}")
                     .url("/api-doc/openapi.json", ApiDoc::openapi()),
