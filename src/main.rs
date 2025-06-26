@@ -16,6 +16,7 @@ use crate::handlers::auth::__path_login_user;
 use crate::handlers::auth::__path_refresh_token;
 use crate::handlers::feed::__path_get_feed;
 use crate::handlers::protected::__path_get_profile;
+use crate::handlers::protected::__path_update_profile;
 use crate::handlers::protected::__path_upload_profile_pic;
 use crate::handlers::services::__path_create_service;
 use crate::handlers::services::__path_delete_service;
@@ -33,6 +34,7 @@ use crate::handlers::users::__path_create_user;
         login_user,
         refresh_token,
         get_profile,
+        update_profile,
         upload_profile_pic,
         create_service,
         update_service,
@@ -52,6 +54,7 @@ use crate::handlers::users::__path_create_user;
             crate::handlers::services::CreateService,
             crate::handlers::services::UpdateService,
             crate::handlers::protected::Profile,
+            crate::handlers::protected::UpdateProfile,
             crate::handlers::protected::ProfilePicResponse,
             crate::handlers::services::ImageResponse,
             crate::handlers::feed::FeedItem
