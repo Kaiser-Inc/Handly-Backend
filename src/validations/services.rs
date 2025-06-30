@@ -1,6 +1,7 @@
 use crate::handlers::services::{CreateService, UpdateService};
 use crate::validations::ValidationError;
 use actix_web::HttpResponse;
+use regex::Regex;
 
 const CATEGORIES: &[&str] = &[
     "eletricista",
@@ -51,7 +52,7 @@ const CATEGORIES: &[&str] = &[
     "mecânico",
 ];
 
-/// Validate CreateService payload according to [RF05] RN0001–RN0008 business rules,
+/// Validate CreateService payload according to [RF05] RN0001–RN0009 business rules,
 /// mapping to MA0003 (campos obrigatórios) and MA0004 (preenchimento incorreto).
 pub async fn validate_create_service_payload(payload: &CreateService) -> Result<(), HttpResponse> {
     let mut errors = Vec::new();
@@ -82,6 +83,16 @@ pub async fn validate_create_service_payload(payload: &CreateService) -> Result<
     // abort early if any missing
     if !errors.is_empty() {
         return Err(HttpResponse::BadRequest().json(errors));
+    }
+
+    // RN0001: name content → MA0004
+    let name_re = Regex::new(r"^[A-Za-zÀ-ÖØ-öø-ÿ\s]{2,60}$").unwrap();
+    if !name_re.is_match(payload.name.trim()) {
+        errors.push(ValidationError {
+            field: "name",
+            code: "RN0001",
+            message: "Um campo não foi preenchido corretamente.".into(), // MA0004
+        });
     }
 
     // RN0007: description length → MA0004
@@ -120,7 +131,7 @@ pub async fn validate_create_service_payload(payload: &CreateService) -> Result<
     Ok(())
 }
 
-/// Validate UpdateService payload according to [RF05] RN0001–RN0008 business rules,
+/// Validate UpdateService payload according to [RF05] RN0001–RN0009 business rules,
 /// mapping to MA0003 (campos obrigatórios) and MA0004 (preenchimento incorreto).
 pub async fn validate_update_service_payload(payload: &UpdateService) -> Result<(), HttpResponse> {
     let mut errors = Vec::new();
@@ -151,6 +162,16 @@ pub async fn validate_update_service_payload(payload: &UpdateService) -> Result<
     // abort early if any missing
     if !errors.is_empty() {
         return Err(HttpResponse::BadRequest().json(errors));
+    }
+
+    // RN0001: name content → MA0004
+    let name_re = Regex::new(r"^[A-Za-zÀ-ÖØ-öø-ÿ\s]{2,60}$").unwrap();
+    if !name_re.is_match(payload.name.trim()) {
+        errors.push(ValidationError {
+            field: "name",
+            code: "RN0001",
+            message: "Um campo não foi preenchido corretamente.".into(), // MA0004
+        });
     }
 
     // RN0007: description length → MA0004
