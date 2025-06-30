@@ -118,6 +118,20 @@ pub async fn validate_user_payload(
             code: "RN0004",
             message: "Um campo não foi preenchido corretamente.".into(), // MA0004
         });
+    } else {
+        // RN0004: CPF/CNPJ uniqueness → MA0002
+        let cpf_exists: Option<bool> =
+            sqlx::query_scalar!("SELECT EXISTS(SELECT 1 FROM users WHERE cpf_cnpj = $1)", id)
+                .fetch_one(pool)
+                .await
+                .map_err(|_| HttpResponse::InternalServerError().finish())?;
+        if cpf_exists.unwrap_or(false) {
+            errors.push(ValidationError {
+                field: "cpf_cnpj",
+                code: "RN0004",
+                message: "Usuário já cadastrado no sistema.".into(), // MA0002
+            });
+        }
     }
 
     if !errors.is_empty() {
