@@ -5,6 +5,7 @@ use actix_web::web::Bytes;
 use actix_web::{web, HttpRequest, HttpResponse};
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sqlx::PgPool;
 use std::fs;
 use std::io::Write;
@@ -62,18 +63,21 @@ pub async fn create_service(
         .and_then(|h| h.to_str().ok())
         .and_then(|s| s.strip_prefix("Bearer "))
         .unwrap_or("");
-    let claims = verify_token(token, "access").ok_or_else(|| ErrorUnauthorized("Invalid token"))?;
+    let claims = verify_token(token, "access").ok_or_else(|| {
+        ErrorUnauthorized(json!({
+            "code": "MA0006",
+            "message": "Credenciais inválidas."
+        }))
+    })?;
     let provider_key = claims.sub;
 
     let svc: Service = sqlx::query_as!(
         Service,
         r#"
         INSERT INTO services
-          (id, provider_key, categories, name, description, image)
-        VALUES
-          ($1, $2, $3, $4, $5, $6)
-        RETURNING
-          id, provider_key, categories, name, description, image, created_at, updated_at
+              (id, provider_key, categories, name, description, image)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, provider_key, categories, name, description, image, created_at, updated_at
         "#,
         Uuid::new_v4(),
         provider_key,
@@ -84,9 +88,18 @@ pub async fn create_service(
     )
     .fetch_one(pool.get_ref())
     .await
-    .map_err(|_| ErrorInternalServerError("DB error"))?;
+    .map_err(|_| {
+        ErrorInternalServerError(json!({
+            "code": "MA0001",
+            "message": "Algo deu errado, tente novamente."
+        }))
+    })?;
 
-    Ok(HttpResponse::Created().json(svc))
+    Ok(HttpResponse::Created().json(json!({
+        "code": "MA0005",
+        "message": "Cadastro feito com sucesso.",
+        "service": svc
+    })))
 }
 
 #[utoipa::path(
@@ -100,6 +113,7 @@ pub async fn create_service(
     ),
     tag = "services"
 )]
+
 pub async fn update_service(
     pool: web::Data<PgPool>,
     path: web::Path<Uuid>,
@@ -130,9 +144,18 @@ pub async fn update_service(
     )
     .fetch_one(pool.get_ref())
     .await
-    .map_err(|_| ErrorInternalServerError("DB error"))?;
+    .map_err(|_| {
+        ErrorInternalServerError(json!({
+            "code": "MA0001",
+            "message": "Algo deu errado, tente novamente."
+        }))
+    })?;
 
-    Ok(HttpResponse::Ok().json(svc))
+    Ok(HttpResponse::Ok().json(json!({
+        "code": "MA0007",
+        "message": "Alterações feitas com sucesso.",
+        "service": svc
+    })))
 }
 
 #[utoipa::path(
