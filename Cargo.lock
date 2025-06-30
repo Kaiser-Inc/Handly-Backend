@@ -902,6 +902,7 @@ dependencies = [
  "dotenvy",
  "futures-util",
  "jsonwebtoken",
+ "once_cell",
  "password-hash",
  "rand_core 0.6.4",
  "regex",

@@ -1,5 +1,6 @@
 use crate::models::service::Service;
 use crate::services::auth::verify_token;
+use crate::validations::validate_profile_name;
 use actix_multipart::Multipart;
 use actix_web::{web, HttpRequest, HttpResponse};
 use futures_util::stream::StreamExt as _;
@@ -97,16 +98,15 @@ pub async fn update_profile(
         None => return HttpResponse::Unauthorized().finish(),
     };
     let key = claims.sub;
-    if payload.name.trim().is_empty() {
-        return HttpResponse::BadRequest().json(json!([{
-            "field": "name",
-            "code": "RN0001",
-            "message": "Preencha todos os campos obrigatórios."
-        }]));
+
+    if let Err(resp) = validate_profile_name(&payload.name) {
+        return resp;                           // 400 com MA0003 ou MA0004
     }
+
     let row = match sqlx::query!(
-        "UPDATE users SET name = $1 WHERE cpf_cnpj = $2 RETURNING name, email, role, profile_pic",
-        payload.name,
+        "UPDATE users SET name = $1 WHERE cpf_cnpj = $2 \
+         RETURNING name, email, role, profile_pic",
+        payload.name.trim(),
         key
     )
     .fetch_one(pool.get_ref())
@@ -117,9 +117,10 @@ pub async fn update_profile(
             return HttpResponse::InternalServerError().json(json!({
                 "code": "MA0001",
                 "message": "Algo deu errado, tente novamente."
-            }))
+            }));
         }
     };
+
     HttpResponse::Ok().json(Profile {
         name: row.name,
         email: row.email,
