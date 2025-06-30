@@ -100,7 +100,7 @@ pub async fn update_profile(
     let key = claims.sub;
 
     if let Err(resp) = validate_profile_name(&payload.name) {
-        return resp;                           // 400 com MA0003 ou MA0004
+        return resp;
     }
 
     let row = match sqlx::query!(
