@@ -14,6 +14,7 @@ use utoipa_swagger_ui::SwaggerUi;
 // Import generated Utoipa path definitions
 use crate::handlers::auth::__path_login_user;
 use crate::handlers::auth::__path_refresh_token;
+use crate::handlers::categories::__path_get_categories;
 use crate::handlers::feed::__path_get_feed;
 use crate::handlers::protected::__path_get_profile;
 use crate::handlers::protected::__path_update_profile;
@@ -42,7 +43,8 @@ use crate::handlers::users::__path_create_user;
         get_service,
         delete_service,
         upload_service_image,
-        get_feed
+        get_feed,
+        get_categories
     ),
     components(
         schemas(
@@ -57,7 +59,8 @@ use crate::handlers::users::__path_create_user;
             crate::handlers::protected::UpdateProfile,
             crate::handlers::protected::ProfilePicResponse,
             crate::handlers::services::ImageResponse,
-            crate::handlers::feed::FeedItem
+            crate::handlers::feed::FeedItem,
+            crate::handlers::categories::CategoriesResponse,
         )
     ),
     tags(
@@ -65,7 +68,7 @@ use crate::handlers::users::__path_create_user;
         (name = "users", description = "User operations"),
         (name = "auth", description = "Authentication operations"),
         (name = "protected", description = "Protected endpoints requiring authentication"),
-        (name = "services", description = "Service operations")
+        (name = "services", description = "Service operations"),
     )
 )]
 struct ApiDoc;
@@ -103,6 +106,7 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::protected::init)
             .configure(routes::services::init)
             .configure(routes::feed::init)
+            .configure(routes::categories::init)
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}")
                     .url("/api-doc/openapi.json", ApiDoc::openapi()),
