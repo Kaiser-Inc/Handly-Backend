@@ -282,7 +282,7 @@ pub async fn get_profile_pic(
         None => return Err(actix_web::error::ErrorNotFound("No profile picture set")),
     };
 
-    let path: PathBuf = format!("./uploads/profile_pics/{}", filename).into();
+    let path: PathBuf = format!("./uploads/profile_pics/{filename}").into();
 
     if !path.exists() {
         return Err(actix_web::error::ErrorNotFound("File not found"));
