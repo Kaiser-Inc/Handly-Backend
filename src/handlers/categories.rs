@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{PgPool, Row};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct CategoriesQuery {
@@ -61,6 +62,7 @@ pub async fn get_categories(
         sqlx::query(
             "
             SELECT u.name AS provider_name,
+                   u.profile_pic,
                    s.id,
                    s.categories,
                    s.name  AS service_name,
@@ -76,6 +78,7 @@ pub async fn get_categories(
         sqlx::query(
             "
             SELECT u.name AS provider_name,
+                   u.profile_pic,
                    s.id,
                    s.categories,
                    s.name  AS service_name,
@@ -105,7 +108,8 @@ pub async fn get_categories(
                 .into_iter()
                 .map(|row| FeedItem {
                     provider_name: row.get("provider_name"),
-                    id: row.get("id"),
+                    profile_pic: row.get("profile_pic"),
+                    id: row.get::<Uuid, _>("id").to_string(),
                     categories: row.get("categories"),
                     service_name: row.get("service_name"),
                     description: row.get("description"),
