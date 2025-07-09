@@ -1,12 +1,14 @@
 use crate::models::service::Service;
 use crate::services::auth::verify_token;
 use crate::validations::validate_profile_name;
+use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{web, HttpRequest, HttpResponse};
 use futures_util::stream::StreamExt as _;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
+use std::path::PathBuf;
 use std::{fs, io::Write};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -239,4 +241,52 @@ pub async fn get_user_services(req: HttpRequest, pool: web::Data<PgPool>) -> Htt
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
     HttpResponse::Ok().json(services)
+}
+
+#[utoipa::path(
+    get,
+    path = "/protected/profilepic",
+    security(("bearerAuth" = [])),
+    responses(
+        (status = 200, description = "Profile picture returned"),
+        (status = 401, description = "Unauthorized"),
+        (status = 404, description = "Profile picture not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "protected"
+)]
+pub async fn get_profile_pic(
+    req: HttpRequest,
+    pool: web::Data<PgPool>,
+) -> actix_web::Result<NamedFile> {
+    let token = req
+        .headers()
+        .get("Authorization")
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))
+        .unwrap_or("");
+
+    let claims = match verify_token(token, "access") {
+        Some(c) => c,
+        None => return Err(actix_web::error::ErrorUnauthorized("Unauthorized")),
+    };
+
+    let key = claims.sub;
+    let user = sqlx::query!("SELECT profile_pic FROM users WHERE cpf_cnpj = $1", key)
+        .fetch_one(pool.get_ref())
+        .await
+        .map_err(|_| actix_web::error::ErrorInternalServerError("DB Error"))?;
+
+    let filename = match user.profile_pic {
+        Some(name) => name,
+        None => return Err(actix_web::error::ErrorNotFound("No profile picture set")),
+    };
+
+    let path: PathBuf = format!("./uploads/profile_pics/{}", filename).into();
+
+    if !path.exists() {
+        return Err(actix_web::error::ErrorNotFound("File not found"));
+    }
+
+    Ok(NamedFile::open(path)?)
 }

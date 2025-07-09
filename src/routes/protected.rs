@@ -1,5 +1,5 @@
 use crate::handlers::protected::{
-    get_profile, get_user_services, update_profile, upload_profile_pic,
+    get_profile, get_profile_pic, get_user_services, update_profile, upload_profile_pic,
 };
 use crate::services::auth::verify_token;
 use actix_web::{http::header::AUTHORIZATION, web, HttpRequest, HttpResponse};
@@ -25,6 +25,7 @@ pub fn init(cfg: &mut web::ServiceConfig) {
             .route("/services", web::get().to(get_user_services))
             .route("/profile", web::get().to(get_profile))
             .route("/profile", web::put().to(update_profile))
-            .route("/profilepic", web::post().to(upload_profile_pic)),
+            .route("/profilepic", web::post().to(upload_profile_pic))
+            .route("/profilepic", web::get().to(get_profile_pic)),
     );
 }
