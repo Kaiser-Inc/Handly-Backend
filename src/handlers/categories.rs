@@ -61,6 +61,7 @@ pub async fn get_categories(
         sqlx::query(
             "
             SELECT u.name AS provider_name,
+                   s.id,
                    s.categories,
                    s.name  AS service_name,
                    s.description,
@@ -75,6 +76,7 @@ pub async fn get_categories(
         sqlx::query(
             "
             SELECT u.name AS provider_name,
+                   s.id,
                    s.categories,
                    s.name  AS service_name,
                    s.description,
@@ -103,6 +105,7 @@ pub async fn get_categories(
                 .into_iter()
                 .map(|row| FeedItem {
                     provider_name: row.get("provider_name"),
+                    id: row.get("id"),
                     categories: row.get("categories"),
                     service_name: row.get("service_name"),
                     description: row.get("description"),
