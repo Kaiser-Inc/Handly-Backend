@@ -3,7 +3,7 @@ use crate::validations::ValidationError;
 use actix_web::HttpResponse;
 use regex::Regex;
 
-const CATEGORIES: &[&str] = &[
+pub const CATEGORIES: &[&str] = &[
     "eletricista",
     "encanador",
     "pedreiro",

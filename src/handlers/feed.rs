@@ -6,6 +6,8 @@ use utoipa::ToSchema;
 #[derive(Serialize, ToSchema)]
 pub struct FeedItem {
     pub provider_name: String,
+    pub profile_pic: Option<String>,
+    pub id: String,
     pub categories: Vec<String>,
     pub service_name: String,
     pub description: String,
@@ -25,6 +27,8 @@ pub async fn get_feed(pool: web::Data<PgPool>) -> HttpResponse {
     match sqlx::query!(
         "
         SELECT u.name AS provider_name,
+               u.profile_pic,
+               s.id,
                s.categories,
                s.name AS service_name,
                s.description,
@@ -41,6 +45,8 @@ pub async fn get_feed(pool: web::Data<PgPool>) -> HttpResponse {
                 .into_iter()
                 .map(|r| FeedItem {
                     provider_name: r.provider_name,
+                    profile_pic: r.profile_pic,
+                    id: r.id.to_string(),
                     categories: r.categories,
                     service_name: r.service_name,
                     description: r.description,
