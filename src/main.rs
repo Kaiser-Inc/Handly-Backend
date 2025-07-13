@@ -15,6 +15,8 @@ use utoipa_swagger_ui::SwaggerUi;
 use crate::handlers::auth::__path_login_user;
 use crate::handlers::auth::__path_refresh_token;
 use crate::handlers::categories::__path_get_categories;
+use crate::handlers::favorites::__path_list_favorites;
+use crate::handlers::favorites::__path_toggle_favorite;
 use crate::handlers::feed::__path_get_feed;
 use crate::handlers::protected::__path_get_profile;
 use crate::handlers::protected::__path_get_profile_pic;
@@ -46,7 +48,9 @@ use crate::handlers::users::__path_create_user;
         delete_service,
         upload_service_image,
         get_feed,
-        get_categories
+        get_categories,
+        toggle_favorite,
+        list_favorites
     ),
     components(
         schemas(
@@ -63,6 +67,7 @@ use crate::handlers::users::__path_create_user;
             crate::handlers::services::ImageResponse,
             crate::handlers::feed::FeedItem,
             crate::handlers::categories::CategoriesResponse,
+            crate::models::favorite::FavoriteEntry
         )
     ),
     tags(
@@ -71,6 +76,7 @@ use crate::handlers::users::__path_create_user;
         (name = "auth", description = "Authentication operations"),
         (name = "protected", description = "Protected endpoints requiring authentication"),
         (name = "services", description = "Service operations"),
+        (name = "favorites", description = "Favorite services & providers")
     )
 )]
 struct ApiDoc;
