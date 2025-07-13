@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        INSERT INTO services\n          (id, provider_key, categories, name, description, image)\n        VALUES\n          ($1, $2, $3, $4, $5, $6)\n        RETURNING\n          id, provider_key, categories, name, description, image, created_at, updated_at\n        ",
+  "query": "SELECT id, provider_key, categories, name, description, image, created_at, updated_at FROM services WHERE provider_key = $1",
   "describe": {
     "columns": [
       {
@@ -46,11 +46,6 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "TextArray",
-        "Text",
-        "Text",
         "Text"
       ]
     },
@@ -65,5 +60,5 @@
       false
     ]
   },
-  "hash": "410924e353c9a3826360c6eb75e0ea23a8cc04e227aeccc4f38852c38b6b0ac8"
+  "hash": "8e25b825969a3e466a522a148235156b6a6b2fa3295734751548c431ea9476fc"
 }

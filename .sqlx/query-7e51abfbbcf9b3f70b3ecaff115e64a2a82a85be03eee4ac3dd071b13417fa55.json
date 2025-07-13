@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT u.name AS provider_name,\n               u.profile_pic,\n               s.id,\n               s.categories,\n               s.name AS service_name,\n               s.description,\n               s.image\n          FROM services s\n          JOIN users u ON u.cpf_cnpj = s.provider_key\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "provider_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "profile_pic",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "categories",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 4,
+        "name": "service_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "image",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "7e51abfbbcf9b3f70b3ecaff115e64a2a82a85be03eee4ac3dd071b13417fa55"
+}
