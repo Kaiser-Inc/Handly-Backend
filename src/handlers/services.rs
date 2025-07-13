@@ -326,21 +326,80 @@ pub async fn upload_service_image(
     tag = "services"
 )]
 pub async fn get_service_image(
+    req: HttpRequest,
     path: web::Path<Uuid>,
     pool: web::Data<PgPool>,
-) -> actix_web::Result<NamedFile> {
+) -> HttpResponse {
     let id = path.into_inner();
     let filename: Option<String> =
-        sqlx::query_scalar!("SELECT image FROM services WHERE id = $1", id)
+        match sqlx::query_scalar!("SELECT image FROM services WHERE id = $1", id)
             .fetch_one(pool.get_ref())
             .await
-            .map_err(|_| actix_web::error::ErrorInternalServerError("DB error"))?;
-    let name = filename.ok_or_else(|| actix_web::error::ErrorNotFound("Imagem não encontrada"))?;
-    let path: PathBuf = ["./uploads/services", &name].iter().collect();
-    if !path.exists() {
-        return Err(actix_web::error::ErrorNotFound("Arquivo não encontrado"));
+        {
+            Ok(v) => v,
+            Err(_) => return HttpResponse::InternalServerError().finish(),
+        };
+    let name = match filename {
+        Some(n) => n,
+        None => return HttpResponse::NoContent().finish(),
+    };
+    let full_path: PathBuf = ["./uploads/services", &name].iter().collect();
+    if full_path.exists() {
+        if let Ok(file) = NamedFile::open(full_path) {
+            return file.into_response(&req);
+        }
+        return HttpResponse::InternalServerError().finish();
     }
-    Ok(NamedFile::open(path)?)
+    HttpResponse::NoContent().finish()
+}
+
+#[utoipa::path(
+    get,
+    path = "/services/{id}/publisher/profilepic",
+    params(("id" = String, Path, description = "Service ID", example = "550e8400-e29b-41d4-a716-446655440000")),
+    responses(
+        (status = 200, description = "Profile picture returned"),
+        (status = 404, description = "Profile picture not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "services"
+)]
+pub async fn get_publisher_profile_pic(
+    req: HttpRequest,
+    path: web::Path<Uuid>,
+    pool: web::Data<PgPool>,
+) -> HttpResponse {
+    let id = path.into_inner();
+    let provider_key: String =
+        match sqlx::query_scalar!("SELECT provider_key FROM services WHERE id = $1", id)
+            .fetch_one(pool.get_ref())
+            .await
+        {
+            Ok(v) => v,
+            Err(_) => return HttpResponse::InternalServerError().finish(),
+        };
+    let filename: Option<String> = match sqlx::query_scalar!(
+        "SELECT profile_pic FROM users WHERE cpf_cnpj = $1",
+        provider_key
+    )
+    .fetch_one(pool.get_ref())
+    .await
+    {
+        Ok(v) => v,
+        Err(_) => return HttpResponse::InternalServerError().finish(),
+    };
+    let name = match filename {
+        Some(n) => n,
+        None => return HttpResponse::NoContent().finish(),
+    };
+    let full_path: PathBuf = ["./uploads/profile_pics", &name].iter().collect();
+    if full_path.exists() {
+        if let Ok(file) = NamedFile::open(full_path) {
+            return file.into_response(&req);
+        }
+        return HttpResponse::InternalServerError().finish();
+    }
+    HttpResponse::NoContent().finish()
 }
 
 #[cfg(test)]

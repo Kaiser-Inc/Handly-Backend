@@ -24,8 +24,9 @@ use crate::handlers::provider_ratings::{
 };
 use crate::handlers::ratings::{__path_create_rating, __path_list_ratings};
 use crate::handlers::services::{
-    __path_create_service, __path_delete_service, __path_get_service, __path_get_service_image,
-    __path_list_services, __path_update_service, __path_upload_service_image,
+    __path_create_service, __path_delete_service, __path_get_publisher_profile_pic,
+    __path_get_service, __path_get_service_image, __path_list_services, __path_update_service,
+    __path_upload_service_image,
 };
 use crate::handlers::users::__path_create_user;
 
@@ -47,6 +48,7 @@ use crate::handlers::users::__path_create_user;
         delete_service,
         upload_service_image,
         get_service_image,
+        get_publisher_profile_pic,
         get_feed,
         get_categories,
         toggle_favorite,
