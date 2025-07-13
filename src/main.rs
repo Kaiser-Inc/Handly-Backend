@@ -11,23 +11,19 @@ use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-// Import generated Utoipa path definitions
-use crate::handlers::auth::__path_login_user;
-use crate::handlers::auth::__path_refresh_token;
+// Utoipa path defs já existentes
+use crate::handlers::auth::{__path_login_user, __path_refresh_token};
 use crate::handlers::categories::__path_get_categories;
-use crate::handlers::favorites::__path_list_favorites;
-use crate::handlers::favorites::__path_toggle_favorite;
+use crate::handlers::favorites::{__path_list_favorites, __path_toggle_favorite};
 use crate::handlers::feed::__path_get_feed;
-use crate::handlers::protected::__path_get_profile;
-use crate::handlers::protected::__path_get_profile_pic;
-use crate::handlers::protected::__path_update_profile;
-use crate::handlers::protected::__path_upload_profile_pic;
-use crate::handlers::services::__path_create_service;
-use crate::handlers::services::__path_delete_service;
-use crate::handlers::services::__path_get_service;
-use crate::handlers::services::__path_list_services;
-use crate::handlers::services::__path_update_service;
-use crate::handlers::services::__path_upload_service_image;
+use crate::handlers::protected::{
+    __path_get_profile, __path_get_profile_pic, __path_update_profile, __path_upload_profile_pic,
+};
+use crate::handlers::ratings::{__path_create_rating, __path_list_ratings};
+use crate::handlers::services::{
+    __path_create_service, __path_delete_service, __path_get_service, __path_list_services,
+    __path_update_service, __path_upload_service_image,
+};
 use crate::handlers::users::__path_create_user;
 
 #[derive(OpenApi)]
@@ -50,7 +46,9 @@ use crate::handlers::users::__path_create_user;
         get_feed,
         get_categories,
         toggle_favorite,
-        list_favorites
+        list_favorites,
+        create_rating,
+        list_ratings
     ),
     components(
         schemas(
@@ -67,7 +65,8 @@ use crate::handlers::users::__path_create_user;
             crate::handlers::services::ImageResponse,
             crate::handlers::feed::FeedItem,
             crate::handlers::categories::CategoriesResponse,
-            crate::models::favorite::FavoriteEntry
+            crate::models::favorite::FavoriteEntry,
+            crate::models::rating::ServiceRating
         )
     ),
     tags(
@@ -84,9 +83,7 @@ struct ApiDoc;
 #[utoipa::path(
     get,
     path = "/health",
-    responses(
-        (status = 200, description = "API health check")
-    ),
+    responses((status = 200, description = "API health check")),
     tag = "health"
 )]
 #[get("/health")]
@@ -115,6 +112,7 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::users::init)
             .configure(routes::auth::init)
             .configure(routes::protected::init)
+            .configure(routes::ratings::init)
             .configure(routes::services::init)
             .configure(routes::feed::init)
             .configure(routes::categories::init)
