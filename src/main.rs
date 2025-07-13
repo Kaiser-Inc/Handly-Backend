@@ -11,13 +11,16 @@ use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-// Utoipa path defs já existentes
 use crate::handlers::auth::{__path_login_user, __path_refresh_token};
 use crate::handlers::categories::__path_get_categories;
 use crate::handlers::favorites::{__path_list_favorites, __path_toggle_favorite};
 use crate::handlers::feed::__path_get_feed;
 use crate::handlers::protected::{
     __path_get_profile, __path_get_profile_pic, __path_update_profile, __path_upload_profile_pic,
+};
+use crate::handlers::provider_ratings::{
+    __path_create_rating as __path_create_provider_rating,
+    __path_list_ratings as __path_list_provider_ratings,
 };
 use crate::handlers::ratings::{__path_create_rating, __path_list_ratings};
 use crate::handlers::services::{
@@ -48,7 +51,9 @@ use crate::handlers::users::__path_create_user;
         toggle_favorite,
         list_favorites,
         create_rating,
-        list_ratings
+        list_ratings,
+        create_provider_rating,
+        list_provider_ratings
     ),
     components(
         schemas(
@@ -66,7 +71,8 @@ use crate::handlers::users::__path_create_user;
             crate::handlers::feed::FeedItem,
             crate::handlers::categories::CategoriesResponse,
             crate::models::favorite::FavoriteEntry,
-            crate::models::rating::ServiceRating
+            crate::models::rating::ServiceRating,
+            crate::models::provider_rating::ProviderRating
         )
     ),
     tags(
@@ -75,7 +81,8 @@ use crate::handlers::users::__path_create_user;
         (name = "auth", description = "Authentication operations"),
         (name = "protected", description = "Protected endpoints requiring authentication"),
         (name = "services", description = "Service operations"),
-        (name = "favorites", description = "Favorite services & providers")
+        (name = "favorites", description = "Favorite services & providers"),
+        (name = "providers", description = "Provider ratings")
     )
 )]
 struct ApiDoc;
@@ -112,6 +119,7 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::users::init)
             .configure(routes::auth::init)
             .configure(routes::protected::init)
+            .configure(routes::provider_ratings::init)
             .configure(routes::ratings::init)
             .configure(routes::services::init)
             .configure(routes::feed::init)
