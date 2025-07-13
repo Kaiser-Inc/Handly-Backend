@@ -16,6 +16,7 @@ use uuid::Uuid;
 #[derive(Serialize, ToSchema)]
 pub struct Profile {
     pub name: String,
+    pub cpf_cnpj: String,
     pub email: String,
     pub role: String,
     pub profile_pic: Option<String>,
@@ -54,7 +55,7 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
     };
     let key = claims.sub;
     let user = match sqlx::query!(
-        "SELECT name, email, role, profile_pic FROM users WHERE cpf_cnpj = $1",
+        "SELECT name, cpf_cnpj, email, role, profile_pic FROM users WHERE cpf_cnpj = $1",
         key
     )
     .fetch_one(pool.get_ref())
@@ -65,6 +66,7 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
     };
     HttpResponse::Ok().json(Profile {
         name: user.name,
+        cpf_cnpj: user.cpf_cnpj,
         email: user.email,
         role: user.role,
         profile_pic: user.profile_pic,
@@ -125,6 +127,7 @@ pub async fn update_profile(
 
     HttpResponse::Ok().json(Profile {
         name: row.name,
+        cpf_cnpj: key.to_string(),
         email: row.email,
         role: row.role,
         profile_pic: row.profile_pic,
