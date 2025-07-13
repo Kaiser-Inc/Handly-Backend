@@ -1,4 +1,5 @@
 use crate::validations::{validate_create_service_payload, validate_update_service_payload};
+use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::web::Bytes;
@@ -9,6 +10,7 @@ use serde_json::json;
 use sqlx::PgPool;
 use std::fs;
 use std::io::Write;
+use std::path::PathBuf;
 use uuid::Uuid;
 
 use crate::models::service::Service;
@@ -310,6 +312,35 @@ pub async fn upload_service_image(
         return HttpResponse::Ok().json(ImageResponse { image: filename });
     }
     HttpResponse::BadRequest().body("file missing")
+}
+
+#[utoipa::path(
+    get,
+    path = "/services/{id}/image",
+    params(("id" = String, Path, description = "Service ID", example = "550e8400-e29b-41d4-a716-446655440000")),
+    responses(
+        (status = 200, description = "Image file returned"),
+        (status = 404, description = "Imagem não encontrada"),
+        (status = 500, description = "Internal server error")
+    ),
+    tag = "services"
+)]
+pub async fn get_service_image(
+    path: web::Path<Uuid>,
+    pool: web::Data<PgPool>,
+) -> actix_web::Result<NamedFile> {
+    let id = path.into_inner();
+    let filename: Option<String> =
+        sqlx::query_scalar!("SELECT image FROM services WHERE id = $1", id)
+            .fetch_one(pool.get_ref())
+            .await
+            .map_err(|_| actix_web::error::ErrorInternalServerError("DB error"))?;
+    let name = filename.ok_or_else(|| actix_web::error::ErrorNotFound("Imagem não encontrada"))?;
+    let path: PathBuf = ["./uploads/services", &name].iter().collect();
+    if !path.exists() {
+        return Err(actix_web::error::ErrorNotFound("Arquivo não encontrado"));
+    }
+    Ok(NamedFile::open(path)?)
 }
 
 #[cfg(test)]
