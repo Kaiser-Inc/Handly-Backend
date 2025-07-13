@@ -120,8 +120,7 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::auth::init)
             .configure(routes::protected::init)
             .configure(routes::provider_ratings::init)
-            .configure(routes::ratings::init)
-            .configure(routes::services::init)
+            .configure(routes::services::init) // agora inclui /services/{id}/ratings
             .configure(routes::feed::init)
             .configure(routes::categories::init)
             .service(
