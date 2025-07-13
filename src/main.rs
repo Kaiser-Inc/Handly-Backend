@@ -106,8 +106,11 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(pool.clone()))
-            .service(Files::new("/static", "./uploads").show_files_listing())
-            .service(Files::new("/uploads/services", "./uploads/services").show_files_listing())
+            .service(
+                Files::new("/uploads", "./uploads")
+                    .prefer_utf8(true)
+                    .use_last_modified(true),
+            )
             .service(health_check)
             .configure(routes::users::init)
             .configure(routes::auth::init)
