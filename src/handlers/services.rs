@@ -4,6 +4,8 @@ use actix_multipart::Multipart;
 use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::web::Bytes;
 use actix_web::{web, HttpRequest, HttpResponse};
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -36,6 +38,64 @@ pub struct UpdateService {
 #[derive(Serialize, ToSchema)]
 pub struct ImageResponse {
     pub image: String,
+}
+
+#[derive(Deserialize, ToSchema)]
+pub struct ImageUpload {
+    pub image: String,
+}
+
+#[utoipa::path(
+    put,
+    path = "/services/{id}/image/base64",
+    params(("id" = String, Path, description = "Service ID", example = "550e8400-e29b-41d4-a716-446655440000")),
+    request_body = ImageUpload,
+    responses(
+        (status = 200, description = "Image uploaded", body = ImageResponse),
+        (status = 400, description = "Bad request"),
+        (status = 401, description = "Unauthorized"),
+        (status = 403, description = "Forbidden"),
+        (status = 404, description = "Not found"),
+        (status = 500, description = "Internal server error")
+    ),
+    security(("bearerAuth" = [])),
+    tag = "services"
+)]
+pub async fn upload_service_image_base64(
+    path: web::Path<Uuid>,
+    pool: web::Data<PgPool>,
+    payload: web::Json<ImageUpload>,
+) -> HttpResponse {
+    let service_id = path.into_inner();
+    let data = match payload.image.split_once(',') {
+        Some((_, d)) => d,
+        None => return HttpResponse::BadRequest().finish(),
+    };
+    let bytes = match STANDARD.decode(data) {
+        Ok(b) => b,
+        Err(_) => return HttpResponse::BadRequest().finish(),
+    };
+    let filename = format!("{}.png", Uuid::new_v4());
+    let dir = "./uploads/services";
+    if fs::create_dir_all(dir).is_err() {
+        return HttpResponse::InternalServerError().finish();
+    }
+    let filepath = PathBuf::from(dir).join(&filename);
+    if fs::write(&filepath, &bytes).is_err() {
+        return HttpResponse::InternalServerError().finish();
+    }
+    if sqlx::query!(
+        "UPDATE services SET image = $1 WHERE id = $2",
+        filename,
+        service_id
+    )
+    .execute(pool.get_ref())
+    .await
+    .is_err()
+    {
+        return HttpResponse::InternalServerError().finish();
+    }
+    HttpResponse::Ok().json(ImageResponse { image: filename })
 }
 
 #[utoipa::path(
