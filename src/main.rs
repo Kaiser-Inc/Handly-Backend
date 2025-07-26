@@ -124,6 +124,7 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::auth::init)
             .configure(routes::protected::init)
             .configure(routes::provider_ratings::init)
+            .configure(routes::favorites::init)
             .configure(routes::services::init)
             .configure(routes::feed::init)
             .configure(routes::categories::init)
