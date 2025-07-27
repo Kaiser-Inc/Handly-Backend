@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT profile_pic AS \"profile_pic?: String\" FROM users WHERE cpf_cnpj = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "profile_pic?: String",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "24cc70df9a9674a7d5cec574f7baebd40ccde169df0ae3a679cc220c643f8f2e"
+}

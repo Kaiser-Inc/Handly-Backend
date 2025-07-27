@@ -9,6 +9,7 @@ pub struct User {
     pub email: String,
     pub password: String,
     pub role: String,
+    pub phone: Option<String>,
     #[schema(value_type = Vec<crate::models::favorite::FavoriteEntry>)]
     pub favorites: Json<Vec<crate::models::favorite::FavoriteEntry>>,
 }
