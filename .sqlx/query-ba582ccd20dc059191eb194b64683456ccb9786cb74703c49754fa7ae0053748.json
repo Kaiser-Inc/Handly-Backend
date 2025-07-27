@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT favorites as \"favorites!: Json<Vec<FavoriteEntry>>\"\n            FROM users WHERE cpf_cnpj = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "favorites!: Json<Vec<FavoriteEntry>>",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ba582ccd20dc059191eb194b64683456ccb9786cb74703c49754fa7ae0053748"
+}

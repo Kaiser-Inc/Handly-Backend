@@ -1,6 +1,6 @@
 use crate::models::service::Service;
 use crate::services::auth::verify_token;
-use crate::validations::validate_profile_name;
+use crate::validations::{validate_profile_name, validate_profile_phone};
 use actix_files::NamedFile;
 use actix_multipart::Multipart;
 use actix_web::{web, HttpRequest, HttpResponse};
@@ -19,6 +19,9 @@ pub struct Profile {
     pub cpf_cnpj: String,
     pub email: String,
     pub role: String,
+    #[schema(value_type = Option<String>)]
+    pub phone: Option<String>,
+    #[schema(value_type = Option<String>)]
     pub profile_pic: Option<String>,
 }
 
@@ -30,6 +33,8 @@ pub struct ProfilePicResponse {
 #[derive(Deserialize, ToSchema)]
 pub struct UpdateProfile {
     pub name: String,
+    #[schema(value_type = Option<String>)]
+    pub phone: Option<String>,
 }
 
 #[utoipa::path(
@@ -54,8 +59,18 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
         None => return HttpResponse::Unauthorized().finish(),
     };
     let key = claims.sub;
+
     let user = match sqlx::query!(
-        "SELECT name, cpf_cnpj, email, role, profile_pic FROM users WHERE cpf_cnpj = $1",
+        r#"
+        SELECT name,
+               cpf_cnpj,
+               email,
+               role,
+               phone        AS "phone?: String",
+               profile_pic  AS "profile_pic?: String"
+          FROM users
+         WHERE cpf_cnpj = $1
+        "#,
         key
     )
     .fetch_one(pool.get_ref())
@@ -64,11 +79,13 @@ pub async fn get_profile(req: HttpRequest, pool: web::Data<PgPool>) -> HttpRespo
         Ok(u) => u,
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
+
     HttpResponse::Ok().json(Profile {
         name: user.name,
         cpf_cnpj: user.cpf_cnpj,
         email: user.email,
         role: user.role,
+        phone: user.phone,
         profile_pic: user.profile_pic,
     })
 }
@@ -106,11 +123,24 @@ pub async fn update_profile(
     if let Err(resp) = validate_profile_name(&payload.name) {
         return resp;
     }
+    if let Err(resp) = validate_profile_phone(&payload.phone) {
+        return resp;
+    }
 
     let row = match sqlx::query!(
-        "UPDATE users SET name = $1 WHERE cpf_cnpj = $2 \
-         RETURNING name, email, role, profile_pic",
+        r#"
+        UPDATE users
+           SET name  = $1,
+               phone = COALESCE($2, phone)
+         WHERE cpf_cnpj = $3
+     RETURNING name,
+               email,
+               role,
+               phone        AS "phone?: String",
+               profile_pic  AS "profile_pic?: String"
+        "#,
         payload.name.trim(),
+        payload.phone,
         key
     )
     .fetch_one(pool.get_ref())
@@ -130,6 +160,7 @@ pub async fn update_profile(
         cpf_cnpj: key.to_string(),
         email: row.email,
         role: row.role,
+        phone: row.phone,
         profile_pic: row.profile_pic,
     })
 }
@@ -162,10 +193,12 @@ pub async fn upload_profile_pic(
         None => return HttpResponse::Unauthorized().finish(),
     };
     let key = claims.sub;
+
     let dir = "./uploads/profile_pics";
     if fs::create_dir_all(dir).is_err() {
         return HttpResponse::InternalServerError().finish();
     }
+
     let mut saved = None;
     while let Some(item) = payload.next().await {
         let mut field = match item {
@@ -201,6 +234,7 @@ pub async fn upload_profile_pic(
         saved = Some(filename);
         break;
     }
+
     match saved {
         Some(name) => HttpResponse::Ok().json(ProfilePicResponse { profile_pic: name }),
         None => HttpResponse::BadRequest().body("file missing"),
@@ -230,11 +264,12 @@ pub async fn get_user_services(req: HttpRequest, pool: web::Data<PgPool>) -> Htt
         None => return HttpResponse::Unauthorized().finish(),
     };
     let provider_key = claims.sub;
+
     let services = match sqlx::query_as!(
         Service,
         "SELECT id, provider_key, categories, name, description, image, created_at, updated_at \
-         FROM services \
-         WHERE provider_key = $1",
+           FROM services \
+          WHERE provider_key = $1",
         provider_key
     )
     .fetch_all(pool.get_ref())
@@ -243,6 +278,7 @@ pub async fn get_user_services(req: HttpRequest, pool: web::Data<PgPool>) -> Htt
         Ok(list) => list,
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
+
     HttpResponse::Ok().json(services)
 }
 
@@ -275,10 +311,14 @@ pub async fn get_profile_pic(
     };
 
     let key = claims.sub;
-    let user = sqlx::query!("SELECT profile_pic FROM users WHERE cpf_cnpj = $1", key)
-        .fetch_one(pool.get_ref())
-        .await
-        .map_err(|_| actix_web::error::ErrorInternalServerError("DB Error"))?;
+
+    let user = sqlx::query!(
+        r#"SELECT profile_pic AS "profile_pic?: String" FROM users WHERE cpf_cnpj = $1"#,
+        key
+    )
+    .fetch_one(pool.get_ref())
+    .await
+    .map_err(|_| actix_web::error::ErrorInternalServerError("DB Error"))?;
 
     let filename = match user.profile_pic {
         Some(name) => name,

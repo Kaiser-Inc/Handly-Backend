@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT name,\n               cpf_cnpj,\n               email,\n               role,\n               phone        AS \"phone?: String\",\n               profile_pic  AS \"profile_pic?: String\"\n          FROM users\n         WHERE cpf_cnpj = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "cpf_cnpj",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "role",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "phone?: String",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "profile_pic?: String",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "f8b3b47b33722e530feb3ba7259ad4635ae6395d5e53bb20ab50bcd3620e3e76"
+}

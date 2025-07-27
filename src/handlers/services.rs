@@ -4,8 +4,7 @@ use actix_multipart::Multipart;
 use actix_web::error::{ErrorInternalServerError, ErrorUnauthorized};
 use actix_web::web::Bytes;
 use actix_web::{web, HttpRequest, HttpResponse};
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine;
+use futures_util::future::try_join_all;
 use futures_util::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -13,11 +12,82 @@ use sqlx::PgPool;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::models::service::Service;
 use crate::services::auth::verify_token;
 use utoipa::ToSchema;
+
+#[derive(Serialize, ToSchema)]
+pub struct ProviderInfo {
+    pub cpf_cnpj: String,
+    pub name: String,
+    pub email: String,
+    pub role: String,
+    #[schema(value_type = Option<String>)]
+    pub phone: Option<String>,
+    #[schema(value_type = Option<String>)]
+    pub profile_pic: Option<String>,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct ServiceWithProvider {
+    pub id: Uuid,
+    pub provider_key: String,
+    pub categories: Vec<String>,
+    pub name: String,
+    pub description: String,
+    #[schema(value_type = Option<String>)]
+    pub image: Option<String>,
+
+    #[schema(value_type = String, format = DateTime)]
+    pub created_at: OffsetDateTime,
+    #[schema(value_type = String, format = DateTime)]
+    pub updated_at: OffsetDateTime,
+
+    pub provider: ProviderInfo,
+}
+
+async fn service_with_provider(
+    pool: &PgPool,
+    svc: Service,
+) -> Result<ServiceWithProvider, sqlx::Error> {
+    let u = sqlx::query!(
+        r#"
+        SELECT cpf_cnpj,
+               name,
+               email,
+               role,
+               phone        AS "phone?: String",
+               profile_pic  AS "profile_pic?: String"
+          FROM users
+         WHERE cpf_cnpj = $1
+        "#,
+        svc.provider_key
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(ServiceWithProvider {
+        id: svc.id,
+        provider_key: svc.provider_key.clone(),
+        categories: svc.categories,
+        name: svc.name,
+        description: svc.description,
+        image: svc.image,
+        created_at: svc.created_at,
+        updated_at: svc.updated_at,
+        provider: ProviderInfo {
+            cpf_cnpj: u.cpf_cnpj,
+            name: u.name,
+            email: u.email,
+            role: u.role,
+            phone: u.phone,
+            profile_pic: u.profile_pic,
+        },
+    })
+}
 
 #[derive(Deserialize, ToSchema)]
 pub struct CreateService {
@@ -40,71 +110,13 @@ pub struct ImageResponse {
     pub image: String,
 }
 
-#[derive(Deserialize, ToSchema)]
-pub struct ImageUpload {
-    pub image: String,
-}
-
-#[utoipa::path(
-    put,
-    path = "/services/{id}/image/base64",
-    params(("id" = String, Path, description = "Service ID", example = "550e8400-e29b-41d4-a716-446655440000")),
-    request_body = ImageUpload,
-    responses(
-        (status = 200, description = "Image uploaded", body = ImageResponse),
-        (status = 400, description = "Bad request"),
-        (status = 401, description = "Unauthorized"),
-        (status = 403, description = "Forbidden"),
-        (status = 404, description = "Not found"),
-        (status = 500, description = "Internal server error")
-    ),
-    security(("bearerAuth" = [])),
-    tag = "services"
-)]
-pub async fn upload_service_image_base64(
-    path: web::Path<Uuid>,
-    pool: web::Data<PgPool>,
-    payload: web::Json<ImageUpload>,
-) -> HttpResponse {
-    let service_id = path.into_inner();
-    let data = match payload.image.split_once(',') {
-        Some((_, d)) => d,
-        None => return HttpResponse::BadRequest().finish(),
-    };
-    let bytes = match STANDARD.decode(data) {
-        Ok(b) => b,
-        Err(_) => return HttpResponse::BadRequest().finish(),
-    };
-    let filename = format!("{}.png", Uuid::new_v4());
-    let dir = "./uploads/services";
-    if fs::create_dir_all(dir).is_err() {
-        return HttpResponse::InternalServerError().finish();
-    }
-    let filepath = PathBuf::from(dir).join(&filename);
-    if fs::write(&filepath, &bytes).is_err() {
-        return HttpResponse::InternalServerError().finish();
-    }
-    if sqlx::query!(
-        "UPDATE services SET image = $1 WHERE id = $2",
-        filename,
-        service_id
-    )
-    .execute(pool.get_ref())
-    .await
-    .is_err()
-    {
-        return HttpResponse::InternalServerError().finish();
-    }
-    HttpResponse::Ok().json(ImageResponse { image: filename })
-}
-
 #[utoipa::path(
     post,
     path = "/services",
     request_body = CreateService,
     security(("bearerAuth" = [])),
     responses(
-        (status = 201, description = "Service created", body = Service),
+        (status = 201, description = "Service created", body = ServiceWithProvider),
         (status = 401, description = "Unauthorized"),
         (status = 500, description = "Internal server error")
     ),
@@ -157,10 +169,14 @@ pub async fn create_service(
         }))
     })?;
 
+    let svc_full = service_with_provider(pool.get_ref(), svc)
+        .await
+        .map_err(|_| ErrorInternalServerError("DB error"))?;
+
     Ok(HttpResponse::Created().json(json!({
         "code": "MA0005",
         "message": "Cadastro feito com sucesso.",
-        "service": svc
+        "service": svc_full
     })))
 }
 
@@ -170,12 +186,11 @@ pub async fn create_service(
     params(("id" = String, Path, description = "Service ID", example = "550e8400-e29b-41d4-a716-446655440000")),
     request_body = UpdateService,
     responses(
-        (status = 200, description = "Service updated", body = Service),
+        (status = 200, description = "Service updated", body = ServiceWithProvider),
         (status = 500, description = "Internal server error")
     ),
     tag = "services"
 )]
-
 pub async fn update_service(
     pool: web::Data<PgPool>,
     path: web::Path<Uuid>,
@@ -213,10 +228,14 @@ pub async fn update_service(
         }))
     })?;
 
+    let svc_full = service_with_provider(pool.get_ref(), svc)
+        .await
+        .map_err(|_| ErrorInternalServerError("DB error"))?;
+
     Ok(HttpResponse::Ok().json(json!({
         "code": "MA0007",
         "message": "Alterações feitas com sucesso.",
-        "service": svc
+        "service": svc_full
     })))
 }
 
@@ -224,19 +243,26 @@ pub async fn update_service(
     get,
     path = "/services",
     responses(
-        (status = 200, description = "List services", body = [Service]),
+        (status = 200, description = "List services", body = [ServiceWithProvider]),
         (status = 500, description = "Internal server error")
     ),
     tag = "services"
 )]
 pub async fn list_services(pool: web::Data<PgPool>) -> Result<HttpResponse, actix_web::Error> {
-    let services: Vec<Service> = sqlx::query_as!(
+    let services_raw: Vec<Service> = sqlx::query_as!(
         Service,
         "SELECT id, provider_key, categories, name, description, image, created_at, updated_at FROM services"
     )
     .fetch_all(pool.get_ref())
     .await
     .map_err(|_| ErrorInternalServerError("DB error"))?;
+
+    let futs = services_raw
+        .into_iter()
+        .map(|s| service_with_provider(pool.get_ref(), s));
+    let services: Vec<ServiceWithProvider> = try_join_all(futs)
+        .await
+        .map_err(|_| ErrorInternalServerError("DB error"))?;
 
     Ok(HttpResponse::Ok().json(services))
 }
@@ -246,7 +272,7 @@ pub async fn list_services(pool: web::Data<PgPool>) -> Result<HttpResponse, acti
     path = "/services/{id}",
     params(("id" = String, Path, description = "Service ID", example = "550e8400-e29b-41d4-a716-446655440000")),
     responses(
-        (status = 200, description = "Get service", body = Service),
+        (status = 200, description = "Get service", body = ServiceWithProvider),
         (status = 500, description = "Not found")
     ),
     tag = "services"
@@ -265,7 +291,11 @@ pub async fn get_service(
     .await
     .map_err(|_| ErrorInternalServerError("Not found"))?;
 
-    Ok(HttpResponse::Ok().json(svc))
+    let svc_full = service_with_provider(pool.get_ref(), svc)
+        .await
+        .map_err(|_| ErrorInternalServerError("DB error"))?;
+
+    Ok(HttpResponse::Ok().json(svc_full))
 }
 
 #[utoipa::path(

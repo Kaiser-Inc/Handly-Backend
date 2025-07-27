@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO provider_ratings (id, provider_id, user_id, stars, comment)\n        VALUES ($1, $2, $3, $4, $5)\n        ON CONFLICT (provider_id, user_id)\n        DO UPDATE SET stars = EXCLUDED.stars,\n                      comment = EXCLUDED.comment,\n                      created_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Int2",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "032c498881b828f6096c935c6f2c665b04442a9572999515a72f5260646be719"
+}
