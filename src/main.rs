@@ -23,6 +23,7 @@ use crate::handlers::provider_ratings::{
     __path_list_ratings as __path_list_provider_ratings,
 };
 use crate::handlers::ratings::{__path_create_rating, __path_list_ratings};
+use crate::handlers::reports::{__path_report_service, __path_report_user};
 use crate::handlers::services::{
     __path_create_service, __path_delete_service, __path_get_publisher_profile_pic,
     __path_get_service, __path_get_service_image, __path_list_services, __path_update_service,
@@ -56,7 +57,9 @@ use crate::handlers::users::__path_create_user;
         create_rating,
         list_ratings,
         create_provider_rating,
-        list_provider_ratings
+        list_provider_ratings,
+        report_service,
+        report_user
     ),
     components(
         schemas(
@@ -126,6 +129,7 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::favorites::init)
             .configure(routes::services::init)
             .configure(routes::feed::init)
+            .configure(routes::reports::init)
             .configure(routes::categories::init)
             .service(
                 SwaggerUi::new("/swagger-ui/{_:.*}")
