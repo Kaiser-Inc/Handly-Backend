@@ -34,7 +34,6 @@ pub struct ProviderInfo {
 #[derive(Serialize, ToSchema)]
 pub struct ServiceWithProvider {
     pub id: Uuid,
-    pub provider_key: String,
     pub categories: Vec<String>,
     pub name: String,
     pub description: String,
@@ -71,7 +70,6 @@ async fn service_with_provider(
 
     Ok(ServiceWithProvider {
         id: svc.id,
-        provider_key: svc.provider_key.clone(),
         categories: svc.categories,
         name: svc.name,
         description: svc.description,
