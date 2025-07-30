@@ -232,7 +232,7 @@ pub async fn update_service(
 pub async fn list_services(pool: web::Data<PgPool>) -> Result<HttpResponse, actix_web::Error> {
     let services: Vec<Service> = sqlx::query_as!(
         Service,
-        "SELECT id, provider_key, categories, name, description, image, created_at, updated_at FROM services"
+        "SELECT id, provider_key, categories, name, description, image, created_at, updated_at FROM services ORDER BY created_at DESC"
     )
     .fetch_all(pool.get_ref())
     .await
