@@ -56,7 +56,6 @@ pub async fn get_provider_profile(
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
 
-    // all services by this provider (newest first)
     let services: Vec<Service> = match sqlx::query_as!(
         Service,
         r#"
