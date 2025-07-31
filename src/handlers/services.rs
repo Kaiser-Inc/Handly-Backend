@@ -126,18 +126,24 @@ pub async fn create_service(
         .and_then(|s| s.strip_prefix("Bearer "))
         .unwrap_or("");
     let claims = verify_token(token, "access").ok_or_else(|| {
-        ErrorUnauthorized(json!({
-            "code": "MA0006",
-            "message": "Credenciais inválidas."
-        }))
+        ErrorUnauthorized(json!({ "code": "MA0006", "message": "Credenciais inválidas." }))
     })?;
     let provider_key = claims.sub;
+
+    let mut tx = pool.begin().await.map_err(ErrorInternalServerError)?;
+
+    sqlx::query!(
+        "UPDATE users SET role = 'provider' WHERE cpf_cnpj = $1 AND role <> 'provider'",
+        provider_key
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(ErrorInternalServerError)?;
 
     let svc: Service = sqlx::query_as!(
         Service,
         r#"
-        INSERT INTO services
-              (id, provider_key, categories, name, description, image)
+        INSERT INTO services (id, provider_key, categories, name, description, image)
         VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING id, provider_key, categories, name, description, image, created_at, updated_at
         "#,
@@ -148,14 +154,15 @@ pub async fn create_service(
         payload.description,
         payload.image
     )
-    .fetch_one(pool.get_ref())
+    .fetch_one(&mut *tx)
     .await
     .map_err(|_| {
-        ErrorInternalServerError(json!({
-            "code": "MA0001",
-            "message": "Algo deu errado, tente novamente."
-        }))
+        ErrorInternalServerError(
+            json!({ "code": "MA0001", "message": "Algo deu errado, tente novamente." }),
+        )
     })?;
+
+    tx.commit().await.map_err(ErrorInternalServerError)?;
 
     Ok(HttpResponse::Created().json(json!({
         "code": "MA0005",

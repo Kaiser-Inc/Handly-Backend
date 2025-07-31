@@ -96,7 +96,7 @@ pub async fn validate_create_service_payload(payload: &CreateService) -> Result<
     }
 
     // RN0007: description length → MA0004
-    if payload.description.chars().count() > 300 {
+    if payload.description.chars().count() < 10 || payload.description.chars().count() > 300 {
         errors.push(ValidationError {
             field: "description",
             code: "RN0007",
