@@ -80,10 +80,16 @@ pub async fn authenticate_user(
 ) -> Result<User, HttpResponse> {
     let user = sqlx::query_as::<_, User>(
         r#"
-            SELECT cpf_cnpj, name, email, password, role, favorites
-              FROM users
-             WHERE email = $1
-            "#,
+        SELECT cpf_cnpj,
+               name,
+               email,
+               password,
+               role,
+               phone,
+               favorites
+          FROM users
+         WHERE email = $1
+    "#,
     )
     .bind(email)
     .fetch_optional(pool)

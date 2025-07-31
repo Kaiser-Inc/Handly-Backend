@@ -1,7 +1,7 @@
 use crate::handlers::ratings::{create_rating, list_ratings};
 use crate::handlers::services::{
     create_service, delete_service, get_publisher_profile_pic, get_service, get_service_image,
-    list_services, update_service, upload_service_image, upload_service_image_base64,
+    list_services, update_service, upload_service_image,
 };
 use actix_web::web;
 
@@ -14,10 +14,6 @@ pub fn init(cfg: &mut web::ServiceConfig) {
             .route("/{id}", web::get().to(get_service))
             .route("/{id}", web::delete().to(delete_service))
             .route("/{id}/image", web::post().to(upload_service_image))
-            .route(
-                "/{id}/image/base64",
-                web::post().to(upload_service_image_base64),
-            )
             .route("/{id}/image", web::get().to(get_service_image))
             .route(
                 "/{id}/publisher/profile-pic",
