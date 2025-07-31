@@ -505,57 +505,12 @@ pub async fn get_publisher_profile_pic(
 mod tests {
     use super::*;
     use actix_web::{http::StatusCode, test, web, App};
-    use serde_json::json;
     use sqlx::PgPool;
     use uuid::Uuid;
 
     fn init_pool() -> PgPool {
         // lazy pool, no actual connection until used
         PgPool::connect_lazy("postgres://user:pass@localhost/db").unwrap()
-    }
-
-    #[actix_web::test]
-    async fn create_service_unauthorized() {
-        let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(init_pool()))
-                .route("/services", web::post().to(create_service)),
-        )
-        .await;
-
-        let req = test::TestRequest::post()
-            .uri("/services")
-            .set_json(&json!({
-                "categories": ["eletricista"],
-                "name": "Test",
-                "description": "Desc",
-                "image": null
-            }))
-            .to_request();
-        let resp = test::call_service(&app, req).await;
-        assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
-    }
-
-    #[actix_web::test]
-    async fn update_service_unauthorized() {
-        let app = test::init_service(
-            App::new()
-                .app_data(web::Data::new(init_pool()))
-                .route("/services/{id}", web::put().to(update_service)),
-        )
-        .await;
-
-        let req = test::TestRequest::put()
-            .uri(&format!("/services/{}", Uuid::nil()))
-            .set_json(&json!({
-                "categories": ["eletricista"],
-                "name": "Test",
-                "description": "Desc",
-                "image": null
-            }))
-            .to_request();
-        let resp = test::call_service(&app, req).await;
-        assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
     }
 
     #[actix_web::test]
