@@ -22,6 +22,7 @@ use crate::handlers::provider_ratings::{
     __path_create_rating as __path_create_provider_rating,
     __path_list_ratings as __path_list_provider_ratings,
 };
+use crate::handlers::providers::__path_get_provider_profile;
 use crate::handlers::ratings::{__path_create_rating, __path_list_ratings};
 use crate::handlers::services::{
     __path_create_service, __path_delete_service, __path_get_publisher_profile_pic,
@@ -49,6 +50,7 @@ use crate::handlers::users::__path_create_user;
         upload_service_image,
         get_service_image,
         get_publisher_profile_pic,
+        get_provider_profile,
         get_feed,
         get_categories,
         toggle_favorite,
@@ -69,6 +71,7 @@ use crate::handlers::users::__path_create_user;
             crate::handlers::services::UpdateService,
             crate::handlers::protected::Profile,
             crate::handlers::protected::UpdateProfile,
+            crate::handlers::providers::PublicProfile,
             crate::handlers::protected::ProfilePicResponse,
             crate::handlers::services::ImageResponse,
             crate::handlers::feed::FeedItem,
@@ -125,6 +128,7 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::provider_ratings::init)
             .configure(routes::favorites::init)
             .configure(routes::services::init)
+            .configure(routes::providers::init)
             .configure(routes::feed::init)
             .configure(routes::categories::init)
             .service(
