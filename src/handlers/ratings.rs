@@ -16,7 +16,9 @@ use crate::{
 
 #[derive(Deserialize, ToSchema)]
 pub struct RatingBody {
+    #[schema(example = 4, minimum = 1, maximum = 5)]
     pub stars: i16,
+    #[schema(example = "Muito bom!")]
     pub comment: Option<String>,
 }
 
