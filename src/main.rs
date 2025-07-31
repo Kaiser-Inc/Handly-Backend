@@ -24,6 +24,7 @@ use crate::handlers::provider_ratings::{
 };
 use crate::handlers::providers::__path_get_provider_profile;
 use crate::handlers::ratings::{__path_create_rating, __path_list_ratings};
+use crate::handlers::reports::{__path_report_service, __path_report_user};
 use crate::handlers::services::{
     __path_create_service, __path_delete_service, __path_get_publisher_profile_pic,
     __path_get_service, __path_get_service_image, __path_list_services, __path_update_service,
@@ -51,6 +52,8 @@ use crate::handlers::users::__path_create_user;
         get_service_image,
         get_publisher_profile_pic,
         get_provider_profile,
+        report_service,
+        report_user,
         get_feed,
         get_categories,
         toggle_favorite,
@@ -78,7 +81,8 @@ use crate::handlers::users::__path_create_user;
             crate::handlers::categories::CategoriesResponse,
             crate::models::favorite::FavoriteEntry,
             crate::models::rating::ServiceRating,
-            crate::models::provider_rating::ProviderRating
+            crate::models::provider_rating::ProviderRating,
+            crate::handlers::reports::ReportPayload
         )
     ),
     tags(
@@ -88,7 +92,8 @@ use crate::handlers::users::__path_create_user;
         (name = "protected", description = "Protected endpoints requiring authentication"),
         (name = "services", description = "Service operations"),
         (name = "favorites", description = "Favorite services & providers"),
-        (name = "providers", description = "Provider ratings")
+        (name = "providers", description = "Provider ratings"),
+        (name = "reports", description = "Report problem / abuse")
     )
 )]
 struct ApiDoc;
@@ -129,6 +134,7 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::favorites::init)
             .configure(routes::services::init)
             .configure(routes::providers::init)
+            .configure(routes::reports::init)
             .configure(routes::feed::init)
             .configure(routes::categories::init)
             .service(

@@ -5,5 +5,6 @@ pub mod feed;
 pub mod protected;
 pub mod provider_ratings;
 pub mod providers;
+pub mod reports;
 pub mod services;
 pub mod users;
