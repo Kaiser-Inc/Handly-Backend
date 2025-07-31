@@ -5,22 +5,27 @@ use actix_web::HttpResponse;
 pub fn validate_report_payload(p: &ReportPayload) -> Result<(), HttpResponse> {
     let mut errors = Vec::new();
 
-    // RN0008 – motivo obrigatório
     if p.reason.is_none() {
         errors.push(ValidationError {
             field: "reason",
             code: "RN0008",
-            message: "Selecione um motivo.".into(), // MA0003
+            message: "Selecione um motivo.".into(),
         });
     }
 
-    // RN0009 - description optional, but if provided, must be <= 250 characters
-    if let Some(desc) = &p.description {
-        if desc.len() < 10 || desc.len() > 300 {
+    if let Some(desc) = p.description.as_ref() {
+        let len = desc.trim().chars().count();
+        if len < 10 {
             errors.push(ValidationError {
                 field: "description",
                 code: "RN0009",
-                message: "Máximo 300 caracteres.".into(), // MA0004 + MA0034
+                message: "A descrição deve ter no mínimo 10 caracteres.".into(),
+            });
+        } else if len > 300 {
+            errors.push(ValidationError {
+                field: "description",
+                code: "RN0009",
+                message: "A descrição deve ter no máximo 300 caracteres.".into(),
             });
         }
     }
